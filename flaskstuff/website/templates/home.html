@@ -1,6 +1,23 @@
 <!-- extend base template-->
-{% extends "base.html" %} {% block title %}Changed{% endblock %}
+{% extends "base.html" %} {% block title %}View Orders{% endblock %}
 
 {% block content %}
-<h1>This is the home page</h1>
+<h1 align="center">Orders</h1>
+<br />
+<br />
+<!--- #region list orders -->
+<ul class="list-group list-group-flush" id="packages">
+  {% for pk in shipment.package_array %}
+  <li class="list-group-item">
+    <a href="{{ url_for('views.pk_details', pk_id=pk.get_id()) }}">
+      {{ "Box " ~ pk.package_id }}
+    </a>
+    <span class="description">{{ "—" ~ pk.shipper.name }}</span>
+    <button type="button" class="close" onClick="delete_package('{{pk.package_id}}')">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </li>
+  {% endfor %}
+</ul>
+<!-- #endregion -->
 {% endblock %}
