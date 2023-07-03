@@ -1,5 +1,11 @@
-<!-- extend base template-->
-{% extends "base.html" %} {% block title %}View Orders{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}View Orders{% endblock %}
+
+{% block style %}
+<!-- aligns text boxes -->
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% endblock %}
 
 {% block content %}
 <h1 align="center">Orders</h1>
@@ -9,15 +15,41 @@
 <ul class="list-group list-group-flush" id="packages">
   {% for pk in shipment.package_array %}
   <li class="list-group-item">
-    <a href="{{ url_for('views.pk_details', pk_id=pk.get_id()) }}">
-      {{ "Box " ~ pk.package_id }}
-    </a>
-    <span class="description">{{ "—" ~ pk.shipper.name }}</span>
-    <button type="button" class="close" onClick="delete_package('{{pk.package_id}}')">
-      <span aria-hidden="true">&times;</span>
-    </button>
+    <div class="order-info">
+      <a href="{{ url_for('views.pk_details', pk_id=pk.get_id()) }}">
+        {{ "Box " ~ pk.package_id }}
+      </a>
+      <span class="description">{{ "—" ~ pk.shipper.name }}</span>
+    </div>
+    <div class="actions">
+      <a href="{{ url_for('views.pk_details', pk_id=pk.get_id()) }}" class="btn btn-link">Edit</a>
+      <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('{{pk.package_id}}')">View</a>
+      <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}')">Delete</a>
+    </div>
+    <div class="view-form" style="display: none;">
+      <p>Description: {{ pk.description }}</p>
+      <p>Has Batteries: {{ pk.has_batteries }}</p>
+      <p>Is Fragile: {{ pk.fragile }}</p>
+      <p>Dimensions: {{ pk.dimensions }}</p>
+      <p>Weight: {{ pk.weight }}</p>
+    </div>
   </li>
   {% endfor %}
 </ul>
 <!-- #endregion -->
+
+<script>
+function toggleView(packageId) {
+  var editForm = document.getElementById("edit-form-" + packageId);
+  var viewForm = document.getElementsByClassName("view-form")[0];
+
+  if (viewForm.style.display === "none") {
+    viewForm.style.display = "block";
+    editForm.style.display = "none";
+  } else {
+    viewForm.style.display = "none";
+  }
+}
+</script>
+  
 {% endblock %}
