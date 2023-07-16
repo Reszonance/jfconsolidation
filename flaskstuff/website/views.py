@@ -1,10 +1,10 @@
 # stores standard routes for website
 # ie. where users can go to 
-from flask import Blueprint, render_template, request, flash, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, flash, jsonify, redirect, url_for, send_file
 from flask_login import login_required, current_user
 from .models import Note
 from . import db
-import json
+import json, os
 
 from backend.shipping_objects import *
 saver = Save_Data(filename="pickle_data.json")
@@ -33,7 +33,8 @@ def home():
             flash('Note added', category='success')
     # applies html template to homepage
     # passes user as a variable to be used in template
-    return render_template("home.html", user=current_user, shipment=shipment)
+    return render_template("home.html", user=current_user, shipment=shipment, package_num=shipment.package_num)
+
 
 @views.route('/delete-note', methods=['POST'])
 def delete_note():
@@ -56,14 +57,25 @@ def delete_package():
     # request.data is json string sent from index.js
     pk_object = json.loads(request.data)    # js object defined in index.js
     pk_id = pk_object['pk_id']
-    shipment.remove_package(pk_id)
+    pk = shipment.package(pk_id)    # retrieves package based on id
+    pk.customer_order.remove_package(pk)
+    saver.save_data(shipment)
+
+    return jsonify({})  # jsonify empty python dictionary
+
+@views.route('/consolidate-packages', methods=['POST'])
+def consolidate():
+    # request is sent as data parameter of request object (not form)
+    # request.data is json string sent from index.js
+    pk_ids = json.loads(request.data)    # js object defined in index.js
+    shipment.consolidate(pk_ids)
+    #saver.save_data(shipment)
 
     return jsonify({})  # jsonify empty python dictionary
 
 # VIEW/EDIT PACKAGE INFO HERE
 # consignee/consignee info: name, email, phone, address
 # additional info: has batteries, wants insurance
-# region view/edit package details
 @views.route('/pkg/<int:pk_id>', methods=['GET', 'POST'])
 def pk_details(pk_id):
     package = shipment.package(pk_id)
@@ -97,13 +109,13 @@ def pk_details(pk_id):
             package.dim_units = form_data['units']
             package.weight = float(form_data['weight'])
             package.description = form_data['package_description']
+            saver.save_data(shipment)
+            return redirect(url_for('views.home'))
         else:
             raise ValueError("Do not recognize save button value, check pk_details.html")
 
     return render_template('pk_details.html', pk=package)
-# endregion
 
-# region add new order
 @views.route('/add-order', methods=['GET', 'POST'])
 def add_order():
     global shipment
@@ -196,7 +208,37 @@ def add_order():
             return redirect(url_for('views.home'))
         elif action == 'cancel':
             return redirect(url_for('views.home'))
-        
+    
+    blank_dict = {
+        'shipper_name': '',
+        'shipper_address': '',
+        'shipper_city': '',
+        'shipper_state': '',
+        'shipper_zip': '',
+        'shipper_phone': '',
+        'shipper_email': '',
+        'consignee_name': '',
+        'consignee_address': '',
+        'consignee_city': '',
+        'consignee_state': '',
+        'consignee_zip': '',
+        'consignee_phone': '',
+        'consignee_email': '',
+        'office_dropoff': "",
+        'office_pickup': "",
+        'insurance': "",
+        'box_num': "",
+        'boxes': {
+            'length': "",
+            'width': "",
+            'height': "",
+            'units': '',
+            'weight': "",
+            'description': '',
+            'batteries': "",    # make this required in the html template
+            'fragile': "",
+        }
+    }
     autofill_dict = {
         'shipper_name': 'John Doe',
         'shipper_address': '123 street',
@@ -215,21 +257,18 @@ def add_order():
         'office_dropoff': False,
         'office_pickup': False,
         'insurance': True,
-        'box_num': 1
+        'box_num': 1,
+        'boxes': {
+            'length': 2,
+            'width': 10,
+            'height': 3,
+            'units': 'INCH',
+            'weight': 234,
+            'description': 'contains items',
+            'batteries': True,
+            'fragile': False,
+        }
     }
-
-    box = {
-        'length': 2,
-        'width': 10,
-        'height': 3,
-        'units': 'inch',
-        'weight': 234,
-        'description': 'contains items',
-        'batteries': True,
-        'fragile': False,
-    }
-
-    autofill_dict['boxes'] = box
     
     # region chunk
     """
@@ -251,9 +290,27 @@ def add_order():
     """
     # endregion
     return render_template('add_order.html', data=autofill_dict)
-# endregion
+
+# https://www.youtube.com/watch?v=pPL66tUwndQ&ab_channel=Cairocoders 7:27
+@views.route("/ajaxlivesearch", methods=['POST', 'GET'])
+def ajaxlivesearch():
+    if request.method == 'POST':
+        search_word = request.form['query']
+        print(search_word)
+    return jsonify('success')
+
+@views.route('/download-excel', methods=['GET'])
+def download_excel():
+    filename = 'exported_data.xlsx'
+    file_path = os.path.join(os.path.dirname(__file__), filename)
+    shipment.export_excel(file_path)
+    shipment.export_excel(filename)
+    return send_file(filename, as_attachment=True)
+
 
 #TODO:
-# redesign package editing page
-# finish package removal (shipping_objects.py)
-# finish add order and add package routes
+# find a way to view customer orders
+# box consolidation: backend part
+# cloudflare free page hosting
+# fix add_order pickle error
+# do customer database system
