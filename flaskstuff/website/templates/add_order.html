@@ -1,0 +1,299 @@
+<!-- extend base template-->
+{% extends "base.html" %} {% block title %}Add Order{% endblock %}
+
+{% block style %}
+<!-- aligns text boxes -->
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% endblock %}
+
+{% block content %}
+<h1 align="center">New Order</h1>
+<br />
+<br />
+
+<!-- failsafe for post request, fix later -->
+<!-- data should be sent via views.py -->
+
+
+<form action="{{ url_for('views.add_order') }}" method="POST">
+
+  <div class="search-table">
+    <label for="customer-search">Search Customer</label>
+    <input type="text" id="search_text" name="search_text" class="form-control" placeholder="Search for Customer">
+    <div id="customer-results"></div>
+  </div>
+  <h2>Shipper</h2>
+  <!-- #region shipper -->
+  <div class="form-section">
+    <label for="shipper-name">Name *</label>
+    <input type="text" id="shipper-name" name="shipper-name" value="{{data['shipper_name']}}" required>
+  </div>
+  <h2>{{data['shipper_name']}}</h2>
+  <div class="form-section">
+    <label for="shipper-address">Address *</label>
+    <textarea id="shipper-address" name="shipper-address" required>{{data['shipper_address']}}</textarea>
+  </div>
+  <div class="form-section form-inline">
+    <label for="shipper-city">City *</label>
+    <input type="text" id="shipper-city" name="shipper-city" value="{{data['shipper_city']}}" required>
+  </div>
+  <div class="form-section form-inline">
+    <label for="shipper-state">State/Province *</label>
+    <input type="text" id="shipper-state" name="shipper-state" value="{{data['shipper_state']}}" required>
+  </div>
+  <div class="form-section form-inline">
+    <label for="shipper-zip">Zip Code</label>
+    <input type="text" id="shipper-zip" name="shipper-zip" value="{{data['shipper_zip']}}">
+  </div>
+  <div class="form-section">
+    <label for="shipper-phone">Phone *</label>
+    <input type="text" id="shipper-phone" name="shipper-phone" value="{{data['shipper_phone']}}" required>
+  </div>
+  <div class="form-section">
+    <label for="shipper-email">Email *</label>
+    <input type="email" id="shipper-email" name="shipper-email" value="{{data['shipper_email']}}" required>
+  </div>
+  <!-- #endregion -->
+
+  <h2>Consignee</h2>
+  <!-- #region consignee -->
+  <div class="form-section">
+    <label for="consignee-name">Name *</label>
+    <input type="text" id="consignee-name" name="consignee-name" value="{{data['consignee_name']}}" required>
+  </div>
+  <div class="form-section">
+    <label for="consignee-address">Address *</label>
+    <textarea id="consignee-address" name="consignee-address" required>{{data['consignee_address']}}</textarea>
+  </div>
+
+  <div class="form-section form-inline">
+    <label for="consignee-city">City *</label>
+    <input type="text" id="consignee-city" name="consignee-city" value="{{data['consignee_city']}}" required>
+  </div>
+  <div class="form-section form-inline">
+    <label for="consignee-state">State/Province *</label>
+    <input type="text" id="consignee-state" name="consignee-state" value="{{data['consignee_state']}}" required>
+  </div>
+  <div class="form-section form-inline">
+    <label for="consignee-zip">Zip Code</label>
+    <input type="text" id="consignee-zip" name="consignee-zip" value="{{data['consignee_zip']}}">
+  </div>
+  <div class="form-section">
+    <label for="consignee-phone">Phone *</label>
+    <input type="text" id="consignee-phone" name="consignee-phone" value="{{data['consignee_phone']}}" required>
+  </div>
+  <div class="form-section">
+    <label for="consignee-email">Email</label>
+    <input type="text" id="consignee-email" name="consignee-email" value="{{data['consignee_email']}}">
+  </div>
+  <!-- #endregion-->
+
+  <h2>Shipment Information</h2>
+  <!-- #region shipment information -->
+  <div class="form-section">
+    <label for="delivery-option">Delivery Option *</label>
+    <p>Please select an option to send the package to us:</p>
+    <div class="delivery-option-section">
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="office-drop-off" 
+          id="option-drop-off" value="drop-off" 
+          {% if data['office_dropoff'] and data['office_dropoff'] != ""%}checked{% endif %}
+          required
+        >
+        <label class="form-check-label" for="option-drop-off">Drop off at our office (No extra charge)</label>
+        <p>Customers can drop off the package at our office in Canada.</p>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="office-drop-off" 
+        id="option-delivery" value="delivery" 
+        {% if not data['office_dropoff'] and data['office_dropoff'] != ""%}checked{% endif %}
+        required
+        >
+        <label class="form-check-label" for="option-delivery">Delivery to our office (Extra charge)</label>
+        <p>We will arrange for the package to be delivered to our office in Canada. Additional charges apply.</p>
+        <div id="pickup-address-section">
+          <label for="pickup-address">Pickup Address</label>
+          <textarea id="pickup-address" name="pickup-address"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="form-section">
+    <label for="consignee-option">Consignee Option *</label>
+    <p>Please select the options for the final leg of the package trip:</p>
+    <div class="consignee-option-section">
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="office-pickup" 
+        id="option-pick-up" value="pick-up" 
+        {% if data['office_pickup'] and data['office_pickup'] != ""%}checked{% endif %}
+        required
+        >
+        <label class="form-check-label" for="option-pick-up">Consignee pick up at our office (No extra charge)</label>
+        <p>The consignee can personally pick up the package from our office.</p>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="office-pickup" 
+        id="option-delivery" value="delivery" 
+        {% if not data['office_pickup'] and data['office_pickup'] != ""%}checked{% endif %}
+        required
+        >
+        <label class="form-check-label" for="option-delivery">Delivery to consignee's address (Extra charge)</label>
+        <p>We will arrange for the package to be delivered to the consignee's address. Additional charges apply.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <label for="insurance"><strong>Would you like insurance?</strong></label>
+    <input type="checkbox" id="insurance" name="insurance" 
+      {% if data['insurance'] and data['insurance'] != ""%}checked{% endif %}
+    >
+  </div>
+  <!-- #endregion-->
+
+  <h2>Package Information</h2>
+  <div class="form-section">
+    <label for="box-count">Number of Boxes *</label>
+    <input type="number" id="box-count" name="box-count" value={{data['box_num']}} required>
+  </div>
+
+  <div id="box-information-section"></div>
+  <script
+    type="text/javascript"
+    src="{{ url_for('static', filename='index.js') }}"
+  ></script>
+  <script>
+      // customer search function
+      /*
+    $(document).ready(function(){
+      load_data();
+      function load_data(query)
+      {
+        $.ajax({
+          url:"/ajaxlivesearch",
+          method:"POST",
+          data:{query:query},
+          success:function(data)
+          {
+            $('#customer-results').html(data);
+          }
+        });
+      }
+      $('search_text').keyup(function(){
+        var search = $(this).val();
+        if (search != ''){
+          load_data(search);
+        } else {
+          load_data();
+        }
+      });
+    });
+    */
+    
+    function generateBoxSections() {
+      const boxCount = parseInt(document.getElementById("box-count").value);
+      let boxSectionHTML = "";
+
+      for (let i = 1; i <= boxCount; i++) {
+        boxSectionHTML += `
+          <div class="box-section">
+            <h3>Box ${i}</h3>
+            <div class="form-section">
+              <label for="dimensions-${i}">Dimensions:</label>
+              <div class="inline-inputs">
+                <div class="input-group">
+                  <input type="text" id="length-${i}" name="length-${i}" placeholder="Length" 
+                    class="form-control small-input" value="{{data['boxes']['length']}}"
+                    required
+                  >
+                  <input type="text" id="width-${i}" name="width-${i}" placeholder="Width" 
+                  class="form-control small-input" value="{{data['boxes']['width']}}"
+                  required
+                  >
+                  <input type="text" id="height-${i}" name="height-${i}" placeholder="Height" 
+                    class="form-control small-input" value="{{data['boxes']['height']}}"
+                    required
+                  >
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="units-${i}" id="inch-${i}" 
+                    value="INCH" {% if data['boxes']['units'] == 'INCH'%}checked{% endif %}
+                    required
+                  >
+                  <label class="form-check-label" for="inch">Inch</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="units-${i}" id="cm-${i}" 
+                    value="CM" {% if data['boxes']['units'] == 'CM'%}checked{% endif %}
+                    required
+                  >
+                  <label class="form-check-label" for="cm">CM</label>
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-section">
+              <label for="weight">Weight:</label>
+              <div class="inline-inputs">
+                <input type="text" id="weight-${i}" name="weight-${i}" placeholder="Weight" class="form-control small-input"
+                  value="{{data['boxes']['weight']}}"
+                  required
+                >
+              </div>
+            </div>
+            
+            <div class="form-section">
+              <label for="box-cargo-description-${i}">Cargo Description*</label>
+              <textarea id="box-cargo-description-${i}" name="box-cargo-description-${i}" required>{{data['boxes']['description']}}</textarea>
+            </div>
+            
+            <div class="form-section">
+              <label for="box-lithium-batteries-${i}"><strong>This box contains lithium batteries: </strong></label>
+              <input type="checkbox" id="box-lithium-batteries-${i}" name="box-lithium-batteries-${i}"
+                {% if data['boxes']['batteries']%}checked{% endif %}
+              >
+              <p>Lithium batteries can be found in laptops, phones, and any rechargeable device.</p>
+            </div>
+            <div class="form-section">
+              <label for="box-fragile-${i}"><strong>This package is fragile:</strong></label>
+              <input type="checkbox" id="box-fragile-${i}" name="box-fragile-${i}"
+              {% if data['boxes']['fragile']%}checked{% endif %}
+              >
+            </div>
+          </div>
+        `;
+      }
+      document.getElementById("box-information-section").innerHTML = boxSectionHTML;
+    }
+    document.getElementById("box-count").addEventListener("change", generateBoxSections);
+
+    function update_pickup_address_field() {
+      const dropOffOption = document.getElementById("option-drop-off");
+      const deliveryOption = document.getElementById("option-delivery");
+      const pickupAddressField = document.getElementById("pickup-address");
+
+      pickupAddressField.disabled = true;
+      dropOffOption.addEventListener("change", updatePickupAddressField);
+      deliveryOption.addEventListener("change", updatePickupAddressField);
+
+    }
+      // enable/disable pickup address input based on delivery option selection
+    function disable_pickup_field(){
+      pickupAddressField.disabled = !deliveryOption.checked;
+
+      // Clear the pickup address field if the delivery option is unchecked
+      /*
+      if (!deliveryOption.checked) {
+        pickupAddressField.value = "";
+      }
+      */
+    }
+  </script>
+
+<button type="submit" class="btn btn-primary" name="action" value="add">Add Order</button>
+<button type="submit" class="btn btn-secondary" name="action" value="cancel">Cancel</button>
+</form>
+
+  {% endblock %}
