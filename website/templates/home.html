@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}View Orders{% endblock %}
+{% block title %}Home{% endblock %}
 
 {% block style %}
 <!-- aligns text boxes -->
@@ -54,7 +54,7 @@
     </div>
     <div class="actions">
       <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}" class="btn btn-link">Edit</a>
-      <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('{{pk.package_id}}')">View</a>
+      <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView({{pk.package_id}})">View</a>
       <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}')">Delete</a>
     </div>
     <div id="view-form-{{pk.package_id}}" class="view-form" style="display: none;">
@@ -100,29 +100,6 @@ function toggleChecked(item) {
   }
 }
 
-/*
-items.forEach(item => {
-  item.addEventListener('click', () => {
-    item.classList.toggle('checked');
-
-    let checked = document.querySelectorAll('.checked'),
-      btnText = document.querySelector('.btn-text');
-
-      if (checked && checked.length > 1) {
-        btnText.innerText = `${checked.length} boxes selected`;
-        if (!saveBtn.classList.contains('consolidate')) {
-          saveBtn.classList.toggle('consolidate');
-        }
-      } else {
-        btnText.innerText = "Select Box";
-        if (saveBtn.classList.contains('consolidate')) {
-          saveBtn.classList.toggle('consolidate');
-        }
-      }
-  });
-});
-*/
-
 function attachEventListeners() {
   items = document.querySelectorAll(".item");
   items.forEach(item => {
@@ -135,6 +112,7 @@ function attachEventListeners() {
 function box_dropdowns() {
   var box_num = {{ shipment.package_num }};
   var box_ids = {{ shipment.package_id_list }}
+  console.log('box ids')
   console.log(box_ids)
   let boxSectionHTML = "";
 
@@ -169,18 +147,14 @@ function consolidate() {
       checked_items.push(val)
     }
   });
-  
-  fetch('/consolidate-packages', {
-    method: 'POST',
-    body: JSON.stringify(checked_items)
-  }).then((_res) => {
-    window.location.href = '/';
-  })
+  consolidate_package(checked_items);
 }
 
 function toggleView(packageId) {
+  packageId = String(packageId);
   var viewForm = document.getElementById("view-form-" + packageId);
-
+  console.log('toggle view for: ');
+  console.log(packageId);
   if (viewForm.style.display === "none") {
     viewForm.style.display = "block";
   } else {

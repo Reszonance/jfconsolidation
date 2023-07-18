@@ -194,6 +194,7 @@ def populate_shipment(wb, name, shipment):
       ws.cell(ws_pointer+inc, pk_headings_start).font = Font(bold = True, color="00000000")
 
       pk_details = pk_info[pk_id]
+      print(f'--------{pk_details}')
 
       start_col = pk_headings_start+1
       weight_cols = (8, 9)  # weight and CBM are stored here

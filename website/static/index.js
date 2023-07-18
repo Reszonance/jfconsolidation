@@ -19,3 +19,13 @@ fetch('/delete-package', {
   window.location.href = '/';
 })
 }
+
+function consolidate_package(checked_items) {
+  fetch('/consolidate-packages', {
+    method: 'POST',
+    body: JSON.stringify(checked_items),
+  }).then((_res) => {
+    console.log('redirect after consolidating');
+    window.location.href = '/';
+  })
+}

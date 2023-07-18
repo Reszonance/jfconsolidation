@@ -35,7 +35,7 @@ def home():
     # passes user as a variable to be used in template
     return render_template("home.html", user=current_user, shipment=shipment, package_num=shipment.package_num)
 
-
+# region delete note
 @views.route('/delete-note', methods=['POST'])
 def delete_note():
     # request is sent as data parameter of request object (not form)
@@ -50,12 +50,14 @@ def delete_note():
             db.session.commit()
     
     return jsonify({})  # jsonify empty python dictionary
+# endregion
 
 @views.route('/delete-package', methods=['POST'])
 def delete_package():
     # request is sent as data parameter of request object (not form)
     # request.data is json string sent from index.js
     pk_object = json.loads(request.data)    # js object defined in index.js
+    print(f'----------PK OBJECT FROM DELETE: {pk_object}')
     pk_id = pk_object['pk_id']
     pk = shipment.package(pk_id)    # retrieves package based on id
     pk.customer_order.remove_package(pk)
@@ -68,10 +70,11 @@ def consolidate():
     # request is sent as data parameter of request object (not form)
     # request.data is json string sent from index.js
     pk_ids = json.loads(request.data)    # js object defined in index.js
+    print(f'-------- PK IDS FROM consolidate() IN VIEWS: {pk_ids}')
     shipment.consolidate([0, 0, 0], pk_ids, "Consolidated boxes")
     #saver.save_data(shipment)
-
-    return jsonify({})  # jsonify empty python dictionary
+    print('consolidate from views, returning empty dict')
+    return jsonify({})
 
 # VIEW/EDIT PACKAGE INFO HERE
 # consignee/consignee info: name, email, phone, address
@@ -79,6 +82,7 @@ def consolidate():
 @views.route('/pkg/<string:pk_id>', methods=['GET', 'POST'])
 def pk_details(pk_id):
     package = shipment.package(pk_id)
+    print(f'------PACKAGE: {package}')
     if request.method == 'POST':
         form_data = request.form
             # ASSUMES THAT SHIPPER == CUSTOMER
@@ -291,7 +295,6 @@ def add_order():
     # endregion
     return render_template('add_order.html', data=autofill_dict)
 
-# https://www.youtube.com/watch?v=pPL66tUwndQ&ab_channel=Cairocoders 7:27
 @views.route("/ajaxlivesearch", methods=['POST', 'GET'])
 def ajaxlivesearch():
     if request.method == 'POST':
