@@ -1,0 +1,149 @@
+<!-- extend base template-->
+{% extends "base.html" %} {% block title %}View Package Details{% endblock %}
+
+{% block style %}
+<!-- aligns text boxes -->
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% endblock %}
+
+{% block content %}
+<h1 align="center">Box {{pk.package_id}}</h1>
+<br />
+<br />
+<!--- #region list orders -->
+<ul class="list-group list-group-flush" id="notes">
+  <div class="form-section">
+    <h3>Shipper/Customer</h3>
+    <form class="edit-form" id="shipper-form" method="POST" action="{{ url_for('views.pk_details', pk_id=pk.package_id) }}">
+      <div class="form-group">
+        <label for="shipper-name">Name:</label>
+        <input type="text" class="form-control" id="shipper-name" name="shipper_name" value="{{ pk.customer.name }}">
+      </div>
+      <div class="form-group">
+        <label for="shipper-email">Email:</label>
+        <input type="email" class="form-control" id="shipper-email" name="shipper_email" value="{{ pk.customer.email }}">
+      </div>
+      <div class="form-group">
+        <label for="shipper-phone">Phone Number:</label>
+        <input type="text" class="form-control" id="shipper-phone" name="shipper_phone" value="{{ pk.customer.phone }}">
+      </div>
+      <div class="form-group">
+        <label for="shipper-address">Address:</label>
+        <input type="text" class="form-control" id="shipper-address" name="shipper_address" value="{{ pk.customer.address }}">
+      </div>
+      <div class="form-group">
+        <label for="shipper-city">City:</label>
+        <input type="text" class="form-control" id="shipper-city" name="shipper_city" value="{{ pk.customer.city }}">
+      </div>
+      <div class="form-group">
+        <label for="shipper-name">State/Province:</label>
+        <input type="text" class="form-control" id="shipper-state" name="shipper_state" value="{{ pk.customer.state }}">
+      </div>
+      <div class="form-group">
+        <label for="shipper-name">Zip Code:</label>
+        <input type="text" class="form-control" id="shipper-zip" name="shipper_zip" value="{{ pk.customer.zip_code }}">
+      </div>
+      <button type="submit" name="save_btn" class="save-btn" value="shipper-info">Save</button>
+    </form>
+  </div>
+  <div class="form-section">
+    <h3>Consignee</h3>
+    <form class="edit-form" id="consignee-form" method="POST" action="{{ url_for('views.pk_details', pk_id=pk.package_id) }}">
+      <div class="form-group">
+        <label for="consignee-name">Name:</label>
+        <input type="text" class="form-control" id="consignee-name" name="consignee_name" value="{{ pk.consignee.name }}">
+      </div>
+      <div class="form-group">
+        <label for="consignee-email">Email:</label>
+        <input type="text" class="form-control" id="consignee-email" name="consignee_email" value="{{ pk.consignee.email }}">
+      </div>
+      <div class="form-group">
+        <label for="consignee-phone">Phone Number:</label>
+        <input type="text" class="form-control" id="consignee-phone" name="consignee_phone" value="{{ pk.consignee.phone }}">
+      </div>
+      <div class="form-group">
+        <label for="consignee-address">Address:</label>
+        <input type="text" class="form-control" id="consignee-address" name="consignee_address" value="{{ pk.consignee.address }}">
+      </div>
+      <div class="form-group">
+        <label for="consignee-city">City:</label>
+        <input type="text" class="form-control" id="consignee-city" name="consignee_city" value="{{ pk.customer.city }}">
+      </div>
+      <div class="form-group">
+        <label for="consignee-name">State/Province:</label>
+        <input type="text" class="form-control" id="consignee-state" name="consignee_state" value="{{ pk.customer.state }}">
+      </div>
+      <div class="form-group">
+        <label for="consignee-name">Zip Code:</label>
+        <input type="text" class="form-control" id="consignee-zip" name="consignee_zip" value="{{ pk.customer.zip_code }}">
+      </div>
+      <button type="submit" name="save_btn" class="save-btn" value="consignee-info">Save</button>
+    </form>
+  </div>
+  <div class="form-section">
+    <h3>Additional Details</h3>
+    <form class="edit-form" id="additional-details-form" method="POST" action="{{ url_for('views.pk_details', pk_id=pk.package_id) }}">
+      <div class="form-section">
+        <label for="dimensions">Dimensions:</label>
+        <div class="inline-inputs">
+          <div class="input-group">
+            <input type="text" id="length" name="length" placeholder="Length" 
+              class="form-control small-input" value="{{pk.dimensions[0]}}"
+            >
+            <input type="text" id="width" name="width" placeholder="Width" 
+             class="form-control small-input" value="{{pk.dimensions[1]}}"
+            >
+            <input type="text" id="height" name="height" placeholder="Height" 
+              class="form-control small-input" value="{{pk.dimensions[2]}}"
+            >
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="units" id="inch" 
+              value="INCH" {% if pk.dim_units == 'INCH'%}checked{% endif %}
+            >
+            <label class="form-check-label" for="inch">Inches</label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="units" id="cm" 
+              value="CM" {% if pk.dim_units == 'CM'%}checked{% endif %}
+            >
+            <label class="form-check-label" for="cm">CM</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label for="weight">Weight:</label>
+        <div class="inline-inputs">
+          <input type="text" id="weight" name="weight" placeholder="Weight" class="form-control small-input"
+            value="{{pk.weight}}"
+          >
+        </div>
+      </div>
+      
+      <div class="form-section">
+        <label for="box-cargo-description">Cargo Description</label>
+        <textarea id="box-cargo-description" name="package_description">{{pk.description}}</textarea>
+      </div>
+      
+      <div class="form-section">
+        <label for="box-lithium-batteries"><strong>This box contains lithium batteries: </strong></label>
+        <input type="checkbox" id="box-lithium-batteries" name="lithium_batteries"
+          {% if pk.has_batteries%}checked{% endif %}
+        >
+        <p>Lithium batteries can be found in laptops, phones, and any rechargeable device.</p>
+      </div>
+      <div class="form-section">
+        <label for="box-fragile"><strong>This package is fragile:</strong></label>
+        <input type="checkbox" id="box-fragile" name="is_fragile"
+        {% if pk.fragile%}checked{% endif %}
+        >
+      </div>
+    </div>
+    <button type="submit" name="save_btn" class="save-btn" value="additional-info">Save</button>
+    </form>
+  </div>
+</ul>
+
+<!-- #endregion -->
+{% endblock %}
