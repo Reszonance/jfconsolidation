@@ -710,10 +710,12 @@ class Save_Data:
             return None
 
     def save_data(self, shipment):
+        """
         if os.path.exists(self.old_file_path):
             os.remove(self.old_file_path)
         if os.path.exists(self.file_path):
             os.rename(self.filename, 'old_'+self.filename)
+        """
         with open(self.file_path, "wb") as file:
             pickle.dump(shipment, file)
 
