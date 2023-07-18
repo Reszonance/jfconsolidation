@@ -590,10 +590,10 @@ class Shipment:
                 # watch out for reassign IDs
                 # TODO: fix this
                 """
-                File "C:\Users\bunni\Documents\websites\jfconsolidation\flaskstuff\backend\shipping_objects.py", line 591, in do_consolidate
+                shipping_objects.py", line 591, in do_consolidate
                 pk.consolidated = True
                 AttributeError: 'NoneType' object has no attribute 'consolidated'
-    """
+                """
                 pk = shipment.package(pk_id)
                 pk.consolidated = True
                 shipment.remove_from_shipment(pk)
