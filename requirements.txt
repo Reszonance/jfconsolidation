@@ -1,5 +1,6 @@
-flask
+Flask
 Flask-SQLAlchemy
+Flask-Login
 openpyxl
 numpy
 pandas
