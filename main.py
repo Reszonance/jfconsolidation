@@ -9,3 +9,5 @@ app = create_app()
 # debug=True will update web server when code changes
 if __name__ == '__main__':
     app.run(debug = True)
+else:
+    gunicorn_app = create_app()
