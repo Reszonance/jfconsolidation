@@ -25,7 +25,6 @@ def home():
         pass
     # applies html template to homepage
     # passes user as a variable to be used in template
-    print(f'----------- PACKAGES: {shipment.packages}')
     return render_template("home.html", shipment=shipment, package_num=shipment.package_num)
 
 @views.route('/delete-package', methods=['POST'])
@@ -35,8 +34,21 @@ def delete_package():
     pk_object = json.loads(request.data)    # js object defined in index.js
     print(f'----------PK OBJECT FROM DELETE: {pk_object}')
     pk_id = pk_object['pk_id']
-    pk = shipment.package(pk_id)    # retrieves package based on id
-    pk.customer_order.remove_package(pk)
+    delete_type = pk_object['delete_type']
+    
+    if delete_type == 'from_box':
+        for cons_pk in shipment.packages:
+            if isinstance(cons_pk, ConsolidatedPackage):
+                for pkkk in cons_pk.packages:
+                    if str(pkkk.package_id) == str(pk_id):
+                        pk = pkkk
+                        cons_pk.remove_packages(False, False, pk)
+                        break
+
+    else:
+        print(f'REMOVE PERMANENTLY FROM SHIPMENT: {pk_id}')
+        pk = shipment.package(pk_id)    # retrieves package based on id
+        pk.customer_order.remove_package(pk)
     saver.save_data(shipment)
 
     return jsonify({})  # jsonify empty python dictionary
@@ -46,8 +58,7 @@ def consolidate():
     # request is sent as data parameter of request object (not form)
     # request.data is json string sent from index.js
     pk_ids = json.loads(request.data)    # js object defined in index.js
-    print(f'-------- PK IDS FROM consolidate() IN VIEWS: {pk_ids}')
-    shipment.consolidate([0, 0, 0], pk_ids, "Consolidated boxes")
+    shipment.consolidate([0, 0, 0], pk_ids)
     #saver.save_data(shipment)
     return jsonify({})
 
@@ -58,7 +69,6 @@ def consolidate():
 def pk_details(pk_id):
     # pk_id is passed as a string
     package = shipment.package(pk_id)
-    print(f'------PACKAGE: {package}')
     if request.method == 'POST':
         form_data = request.form
             # ASSUMES THAT SHIPPER == CUSTOMER
@@ -94,7 +104,12 @@ def pk_details(pk_id):
         else:
             raise ValueError("Do not recognize save button value, check pk_details.html")
 
-    return render_template('pk_details.html', pk=package)
+    cons_packages = []
+    if isinstance(package, ConsolidatedPackage):
+        for pk in package.packages:
+            cons_packages.append(pk)
+
+    return render_template('pk_details.html', pk=package, cons_packages=cons_packages)
 
 @views.route('/add-order', methods=['GET', 'POST'])
 def add_order():

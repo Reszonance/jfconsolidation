@@ -170,12 +170,19 @@ class ConsolidatedPackage(Package):
         list position: nth consolidated box
         """
         return f'CONS-{list_position}'
-    def generate_sub_id(self):
-        return self.package_id + f'-{len(self.packages)}'
+    def generate_sub_id(self, position=-1):
+        if position == -1:
+            position = len(self.packages)
+        return self.package_id + f'-{position}'
+    def generate_ids(self):
+        for pk, i in zip(self.packages, range(1, len(self.packages)+1)):
+            pk.package_id = self.generate_sub_id(position=i)
 
-    def __init__(self, dimensions, dim_units, customer_order, description='Consolidated', package_list=[]):
+    def __init__(self, dimensions, dim_units, customer_order, description='default', package_list=[]):
 
         print(f'--------NEW CONSOLIDATED PACKAGE for {customer_order.customer.name}')
+        if len(package_list) < 2:
+            raise ValueError("ConsolidatedPackage must have at least 2 packages.")
 
         shipment = customer_order.shipment
         self.customer_order = customer_order
@@ -187,21 +194,29 @@ class ConsolidatedPackage(Package):
         self.set_dimensions(new_dimensions=dimensions)
         self.weight = 0
         self._dim_units = dim_units  # string: INCH or CM
+        if description == 'default':
+            # describe as shipper name and # of boxes they are shipping
+            description = ""
+            cdict = {}
+            for pk in package_list:
+                c = shipment.package(pk).customer
+                cdict[c] = cdict.get(c, 0) + 1
+            for c, num in cdict.items():
+                description += f'{c}: {num}x, '
+            description = description[:-2]
+
         self.description = description
-        if len(package_list) < 2:
-            raise ValueError("ConsolidatedPackage must have at least 2 packages.")
+
         
         self.has_batteries = False
         self.fragile = False
         self.insurance = False
+        self.consolidated = False   # do not remove
         shipment = self.customer_order.shipment
         
-        print(f'----------adding these packages to consolidated box via init: {package_list}')
-        self.add_packages(*package_list)
-        print(f'----------added these packages to consolidated box via init: {self.packages}')
         self.customer_order.add_package(self)
-        self.package_id = self.generate_id(shipment.consolidated_num)
-        print(f'ORDER PACKAGES: {self.customer_order.packages}')
+        self._package_id = self.generate_id(shipment.consolidated_num)
+        self.add_packages(*package_list)
 
     def add_packages(self, *packages):
         """
@@ -227,8 +242,7 @@ class ConsolidatedPackage(Package):
             # assigns package_id = -1 within function below
             shipment.remove_from_shipment(pk)
             self.packages.append(pk)
-            pk.package_id = str(len(self.packages))
-            print(self.packages)
+            pk.package_id = self.generate_sub_id()
             
             self.weight += pk.weight
             if not self.has_batteries and pk.has_batteries:
@@ -254,6 +268,10 @@ class ConsolidatedPackage(Package):
         None
         """
         shipment = self.customer_order.shipment
+        print(f'PACKAGES PASSED TO REMOVE PACKAGE: {packages}')
+        for pk in packages:
+            print(f'should be removing {pk}')
+
         if delete_self:
                 # do not retain package info after deletion
                 return
@@ -282,6 +300,7 @@ class ConsolidatedPackage(Package):
 
         new_packages = [pk for pk in self.packages if pk not in packages]
         self.packages = new_packages
+        self.generate_ids()
         print(f'new package list: {self.packages}')
 
         # update batteries/fragile info for consolidated box
@@ -452,7 +471,9 @@ class CustomerOrder:
         
         self.packages.remove(package)
         if self.shipment != -1:
-            self.shipment.packages.remove(package)
+            if not package.consolidated:
+                # consolidated packages are already removed from shipment
+                self.shipment.packages.remove(package)
             if isinstance(package, ConsolidatedPackage):
                 # does not remove box from shipment or customer order
                 print(f'REMOVING THESE PACKAGES FROM CONSOLIDATED BOX VIA CUSTOMER ORDER: {package.packages}')
@@ -631,9 +652,19 @@ class Shipment:
                 pk.package_id = pk.generate_id(c_label)
     
     def package(self, package_id):
+        cons_list = []
         for pk in self.packages:
             if str(pk.package_id) == str(package_id):
+                print(f'FOUND {pk} FROM SHIPMENT.PACKAGE()')
                 return pk
+            elif isinstance(pk, ConsolidatedPackage):
+                cons_list.append(pk)
+
+        # check if package is consolidated
+        for cons_pk in cons_list:
+            for pk in cons_pk.packages:
+                if str(pk.package_id) == str(package_id):
+                    return pk
 
         return None
     
@@ -704,7 +735,7 @@ class Shipment:
     # can be slow depending on # of packages
     # can optimize
     # takes a list of package IDs
-    def consolidate(self, dimensions: iter, packages, description: str):
+    def consolidate(self, dimensions: iter, packages, description: str="default"):
 
         if len(packages) < 2:
             print('Need at least 2 packages to consolidate')

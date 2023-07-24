@@ -70,7 +70,7 @@
     <div class="actions">
       <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}" class="btn btn-link">Edit</a>
       <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('{{ pk.package_id }}')">View</a>
-      <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}')">Delete</a>
+      <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}', 'permanent')">Delete</a>
     </div>
     <div id="view-form-{{ pk.package_id }}" class="view-form" style="display: none;">
       <p>Description: {{ pk.description }}</p>
@@ -78,6 +78,24 @@
       <p>Is Fragile: {{ pk.fragile }}</p>
       <p>Dimensions ({{pk.dim_units}}): {{ pk.dimensions }}</p>
       <p>Weight (kg): {{ pk.weight }}</p>
+
+      {% if pk.__class__ == 'ConsolidatedPackage' %}
+        {% for box in pk.packages %}
+        {% set pk_id = box.package_id %}
+        <div class="order-info">
+          <a href="{{ url_for('views.pk_details', pk_id=pk_id) }}">
+            {{"Box " ~ pk_id}}
+          </a>
+          <span class="description">{{"— " ~ box.shipper.name}}</span>
+        </div>
+        <div class="actions">
+          <a href="{{ url_for('views.pk_details', pk_id=pk_id) }}" class="btn btn-link">Edit</a>
+          <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('{{ pk_id }}')">View</a>
+          <a href="javascript:void(0);" onClick="delete_package('{{ pk_id }}')">Delete</a>
+        </div>
+        {% endfor %}
+      {% endif %}
+
     </div>
   </li>
   {% endfor %}
@@ -85,38 +103,6 @@
 <!-- #endregion -->
 
 <script>
-function toggleView(packageId) {
-  var viewForm = document.getElementById("view-form-" + packageId);
-  if (viewForm.style.display === "none") {
-    viewForm.style.display = "block";
-  } else {
-    viewForm.style.display = "none";
-  }
-}
-
-// add innerHTML to div id='view-form'+id
-// each line is a link displaying info on box which is display:none by default
-function cons_dropdown(pk_id_list) {
-  let boxSectionHTML = "";
-
-  {% for pk_id in pk_id_list %}
-    boxSectionHTML += `
-      <div class="order-info">
-        <a href="{{ url_for('views.pk_details', pk_id=pk_id) }}">
-          {{"Box " ~ pk_id}}
-        </a>
-        <span class="description">{{"— " ~ shipment.package(pk_id).shipper.name}}</span>
-      </div>
-      <div class="actions">
-        <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}" class="btn btn-link">Edit</a>
-        <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('{{ pk.package_id }}')">View</a>
-        <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}')">Delete</a>
-      </div>
-      `;
-  {% endfor %}
-
-}
-
 
 const selectBtn = document.querySelector(".select-btn"),
       saveBtn = document.querySelector(".save-btn"),
