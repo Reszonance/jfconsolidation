@@ -27,7 +27,22 @@
     </span>
   </div>
   <ul class="list-items">
+    <!-- list of boxes to consolidate goes here -->
     <div id="boxes-consolidate"></div>
+    <div class="consolidated-dimensions">
+      <input type="text" id="length-cons" name="length-cons" placeholder="Length" 
+        class="form-control small-input consolidate"
+        required
+      >
+      <input type="text" id="width-cons" name="width-cons" placeholder="Width" 
+      class="form-control small-input consolidate"
+      required
+      >
+      <input type="text" id="height-cons" name="height-cons" placeholder="Height" 
+        class="form-control small-input consolidate"
+        required
+      >
+    </div>
   </ul>
 
   <button 
@@ -54,10 +69,10 @@
     </div>
     <div class="actions">
       <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}" class="btn btn-link">Edit</a>
-      <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView({{pk.package_id}})">View</a>
+      <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('{{ pk.package_id }}')">View</a>
       <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}')">Delete</a>
     </div>
-    <div id="view-form-{{pk.package_id}}" class="view-form" style="display: none;">
+    <div id="view-form-{{ pk.package_id }}" class="view-form" style="display: none;">
       <p>Description: {{ pk.description }}</p>
       <p>Has Batteries: {{ pk.has_batteries }}</p>
       <p>Is Fragile: {{ pk.fragile }}</p>
@@ -70,8 +85,42 @@
 <!-- #endregion -->
 
 <script>
+function toggleView(packageId) {
+  var viewForm = document.getElementById("view-form-" + packageId);
+  if (viewForm.style.display === "none") {
+    viewForm.style.display = "block";
+  } else {
+    viewForm.style.display = "none";
+  }
+}
+
+// add innerHTML to div id='view-form'+id
+// each line is a link displaying info on box which is display:none by default
+function cons_dropdown(pk_id_list) {
+  let boxSectionHTML = "";
+
+  {% for pk_id in pk_id_list %}
+    boxSectionHTML += `
+      <div class="order-info">
+        <a href="{{ url_for('views.pk_details', pk_id=pk_id) }}">
+          {{"Box " ~ pk_id}}
+        </a>
+        <span class="description">{{"— " ~ shipment.package(pk_id).shipper.name}}</span>
+      </div>
+      <div class="actions">
+        <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}" class="btn btn-link">Edit</a>
+        <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('{{ pk.package_id }}')">View</a>
+        <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}')">Delete</a>
+      </div>
+      `;
+  {% endfor %}
+
+}
+
+
 const selectBtn = document.querySelector(".select-btn"),
-      saveBtn = document.querySelector(".save-btn");
+      saveBtn = document.querySelector(".save-btn"),
+      cnsDim = document.querySelector(".consolidated-dimensions");
 let items = document.querySelectorAll(".item");
 
 selectBtn.addEventListener('click', () =>{
@@ -87,6 +136,7 @@ function toggleChecked(item) {
     btnText.innerText = `${checked.length} boxes selected`;
     if (!saveBtn.classList.contains('consolidate')) {
       saveBtn.classList.add('consolidate');
+      cnsDim.classList.add('consolidate');
     }
   } else {
     if (checked.length == 1) {
@@ -96,6 +146,7 @@ function toggleChecked(item) {
     }
     if (saveBtn.classList.contains('consolidate')) {
       saveBtn.classList.remove('consolidate');
+      cnsDim.classList.remove('consolidate');
     }
   }
 }
@@ -111,18 +162,18 @@ function attachEventListeners() {
 
 function box_dropdowns() {
   var box_num = {{ shipment.package_num }};
-  var box_ids = {{ shipment.package_id_list }}
-  console.log('box ids')
-  console.log(box_ids)
+  var box_ids = {{ shipment.package_id_list|tojson }}
+  console.log('box ids:')
+  //console.log(box_ids)
   let boxSectionHTML = "";
 
-  for (let i = 1; i <= box_num; i++) {
+  for (let i = 0; i < box_num; i++) {
     boxSectionHTML += `
     <li class="item" value="${box_ids[i]}">
       <span class="checkbox">
         <i class="fa-solid fa-check check-icon"></i>
       </span>
-      <span class="item-text">Box ${i}</span>
+      <span class="item-text">Box ${box_ids[i]}</span>
     </li>
     `;
   }
@@ -147,20 +198,17 @@ function consolidate() {
       checked_items.push(val)
     }
   });
+
+  // FIXME send dimensions to consolidate_package in index.js
+  // not sure how to fetch value from length object
+  length = document.getElementById("length-cons");
+  width = document.getElementById("width-cons");
+  height = document.getElementById("height-cons");
+  console.log('length of consolidated box:');
+  console.log(length);
   consolidate_package(checked_items);
 }
 
-function toggleView(packageId) {
-  packageId = String(packageId);
-  var viewForm = document.getElementById("view-form-" + packageId);
-  console.log('toggle view for: ');
-  console.log(packageId);
-  if (viewForm.style.display === "none") {
-    viewForm.style.display = "block";
-  } else {
-    viewForm.style.display = "none";
-  }
-}
 </script>
   
 {% endblock %}

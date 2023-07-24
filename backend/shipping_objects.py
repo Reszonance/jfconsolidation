@@ -20,11 +20,12 @@ class Package:
         self._shipper = shipper
         self._consignee = consignee
 
-        self._dimensions = -1
+        self.dim_units = dim_units  # string: INCH or CM
+        self._dimensions = []
         self.set_dimensions(new_dimensions=dimensions)
-        self.dim_units = dim_units
-        #self._dim_units = dim_units  # string: INCH or CM
-        print(f'----------assigned units: {self.dim_units}')
+        #self.dim_units = dim_units
+
+        
         self.weight = weight
         self.description = description
         self.has_batteries = has_batteries
@@ -52,26 +53,42 @@ class Package:
         return self._package_id
     @package_id.setter
     def package_id(self, new_value):
-        self._package_id = new_value
-        #self._package_id = str(new_value)
+        self._package_id = str(new_value)
         return self._package_id
     @property
     def dimensions(self):
-        # check if dimensions are blank if initializing without dimensions
-        # to set dimension, do we need a setter too
         return self._dimensions
-    """
+    
     @property 
     def dim_units(self):
-        self._dim_units
+        return self._dim_units
     
     @dim_units.setter
     def dim_units(self, new_units):
         if new_units != 'INCH' and new_units != 'CM':
-            raise ValueError('New units must be \'INCH\' or \'CM\'.')
-    """
-    
-    def set_dimensions(self, new_dimensions=None, length=None, width=None, height=None):
+            raise ValueError('New units must be INCH or CM.')
+        
+        # unit conversion
+        if hasattr(self, '_dim_units'):
+            self.convert_dimensions(self._dim_units, new_units)
+
+        self._dim_units = new_units
+
+    def convert_dimensions(self, units: str, new_units: str):
+        if units == new_units:
+            return
+        if units == "INCH":
+            if new_units == "CM":
+                self.set_dimensions(length=self.dimensions[0]*2.54,
+                               width=self.dimensions[1]*2.54,
+                               height=self.dimensions[2]*2.54)
+        elif units == "CM":
+            if new_units == "INCH":
+                self.set_dimensions(length=self.dimensions[0]/2.54,
+                               width=self.dimensions[1]/2.54,
+                               height=self.dimensions[2]/2.54)
+                
+    def set_dimensions(self, new_dimensions: iter=None, length: float=None, width: float=None, height: float=None):
         if new_dimensions is not None:
             if not hasattr(new_dimensions, '__iter__'):
                 raise ValueError("Dimensions must be an iterable.")
@@ -93,10 +110,10 @@ class Package:
                     self._dimensions[2] = height
                 else:
                     raise ValueError("Height must be a number.")
-        # in CM
-    
+        
     @property
     def cbm(self):
+        # in CM
         multiplier = 1
         if self.dim_units.lower() == "inch":
             return (self.dimensions[0]*2.54 *
@@ -151,45 +168,25 @@ class ConsolidatedPackage(Package):
     def generate_id(self, list_position):
         """
         list position: nth consolidated box
-        #FIXME id cannot be a string otherwise causes issues
         """
-        return list_position+99 #f'{list_position}-CONS'
+        return f'CONS-{list_position}'
+    def generate_sub_id(self):
+        return self.package_id + f'-{len(self.packages)}'
+
     def __init__(self, dimensions, dim_units, customer_order, description='Consolidated', package_list=[]):
+
         print(f'--------NEW CONSOLIDATED PACKAGE for {customer_order.customer.name}')
-
-        # region functions for init
-        def add_packages(packages):
-            print(f'-------------- LIST OF PACKAGE IDS {shipment.package_id_list}')
-            for pk_id in packages:
-                print(f'----adding box {pk_id} to consolidated box')
-                # remove each package from the shipment
-                # watch out for reassign IDs
-                
-                pk = shipment.package(pk_id)
-                print(f'----package fetched from {pk_id}: {pk}')
-                pk.consolidated = True
-                pk.package_id = -1
-                shipment.remove_from_shipment(pk)
-                
-                self.weight += pk.weight
-                if not self.has_batteries and pk.has_batteries:
-                    self.has_batteries = True
-                if not self.fragile and pk.fragile:
-                    self.fragile = True
-                    
-            self.customer_order.add_package(self)
-
-        # endregion
 
         shipment = customer_order.shipment
         self.customer_order = customer_order
         self._shipper = None
         self._consignee = None
 
+        self.packages = []  # package_list items are added via add_packages()
         self._dimensions = -1
         self.set_dimensions(new_dimensions=dimensions)
         self.weight = 0
-        self.dim_units = dim_units  # string: INCH or CM
+        self._dim_units = dim_units  # string: INCH or CM
         self.description = description
         if len(package_list) < 2:
             raise ValueError("ConsolidatedPackage must have at least 2 packages.")
@@ -199,8 +196,102 @@ class ConsolidatedPackage(Package):
         self.insurance = False
         shipment = self.customer_order.shipment
         
-        add_packages(package_list)
-        self.package_id = self.generate_id(len(shipment.consolidated_packages))
+        print(f'----------adding these packages to consolidated box via init: {package_list}')
+        self.add_packages(*package_list)
+        print(f'----------added these packages to consolidated box via init: {self.packages}')
+        self.customer_order.add_package(self)
+        self.package_id = self.generate_id(shipment.consolidated_num)
+        print(f'ORDER PACKAGES: {self.customer_order.packages}')
+
+    def add_packages(self, *packages):
+        """
+        Adds packages to consolidated box and removes it from shipment. 
+        ID is assigned based on position in consolidated box package list.
+
+        Parameters:
+        ----------
+        *packages: list
+            List of package ids.
+
+        Returns
+        ----------
+        None
+        """
+        shipment = self.customer_order.shipment
+        for pk, i in zip(packages, range(1, 10)):
+            print(self.packages)
+            
+        for pk in packages:
+            pk = shipment.package(pk)
+            pk.consolidated = True
+            # assigns package_id = -1 within function below
+            shipment.remove_from_shipment(pk)
+            self.packages.append(pk)
+            pk.package_id = str(len(self.packages))
+            print(self.packages)
+            
+            self.weight += pk.weight
+            if not self.has_batteries and pk.has_batteries:
+                self.has_batteries = True
+            if not self.fragile and pk.fragile:
+                self.fragile = True
+        
+        return None
+
+    def remove_packages(self, remove_all=False, delete_self=False, *packages):
+        """
+        Removes a list of packages from a consolidated box. Adds them back to the shipment.
+
+        Parameters:
+        ----------
+        *packages: list
+            List of package ids.
+        remove_all: bool
+            If set to true, removes all packages.
+
+        Returns
+        ----------
+        None
+        """
+        shipment = self.customer_order.shipment
+        if delete_self:
+                # do not retain package info after deletion
+                return
+        
+        if remove_all:
+            packages = self.packages
+
+        for pk in packages:
+            # PACKAGE_ID OF A CONSOLIDATED BOX IS NOT BASED ON ITS POSITION WITHIN THE SHIPMENT
+
+            # if searching based on ID
+            # similar to Shipment.package() function
+            if not isinstance(pk, Package):
+                print('not a package object, searching by ID:')
+                for p in self.packages:
+                    if p.package_id == pk:
+                        print(f'found: {p}')
+                        pk = p
+
+            # add to shipment before setting consolidated = False
+            # otherwise it won't work (by design)
+            self.shipment.add_to_shipment(pk)
+            pk.consolidated = False
+            #self.packages.remove(pk)
+            self.weight -= pk.weight
+
+        new_packages = [pk for pk in self.packages if pk not in packages]
+        self.packages = new_packages
+        print(f'new package list: {self.packages}')
+
+        # update batteries/fragile info for consolidated box
+        self.has_batteries = False
+        self.fragile = False
+        for pk in self.packages:
+            if not self.has_batteries and pk.has_batteries:
+                self.has_batteries = True
+            if not self.fragile and pk.fragile:
+                self.fragile = True
 
 
 class Person:
@@ -358,16 +449,18 @@ class CustomerOrder:
     def remove_package(self, package):
         if self.package_by_id(package) is None:
             raise ValueError("Cannot remove nonexistent package from order.")
+        
         self.packages.remove(package)
         if self.shipment != -1:
-            packages = self.shipment.packages
-            #packages.remove(package)
             self.shipment.packages.remove(package)
+            if isinstance(package, ConsolidatedPackage):
+                # does not remove box from shipment or customer order
+                print(f'REMOVING THESE PACKAGES FROM CONSOLIDATED BOX VIA CUSTOMER ORDER: {package.packages}')
+                package.remove_packages(remove_all=True)
             # fixme once package id assignment is changed
             print('-----package removed via customerorder object')
             package.package_id = -1
             self.shipment.assign_package_IDs()
-
 
     def package_by_id(self, package):
         """
@@ -416,7 +509,6 @@ class Shipment:
         # gross weight and battery num are defined as property methods
         self._orders_array = []
         self._package_array = []
-        self._consolidated_packages = []
         self._id = -1
         self._shipment_order = customer_order
         customer_order.shipment = self
@@ -437,8 +529,12 @@ class Shipment:
     def packages(self):
         return self._package_array
     @property
-    def consolidated_packages(self):
-        return self._consolidated_packages
+    def consolidated_num(self):
+        num = 0
+        for pk in self.packages:
+            if isinstance(pk, ConsolidatedPackage):
+                num += 1
+        return num
     @property
     def package_id_list(self):
         ids = []
@@ -521,6 +617,9 @@ class Shipment:
     # packages must belong to a customer
     # THERE SHOULD BE NO DUPLICATE IDS
     def assign_package_IDs(self):
+        """
+        accounts for consolidated package IDs
+        """
         label = 0
         c_label = 0
         for pk in self.packages:
@@ -535,18 +634,35 @@ class Shipment:
         for pk in self.packages:
             if str(pk.package_id) == str(package_id):
                 return pk
+
         return None
     
     def add_to_shipment(self, item):
+        """
+        Adds an order or consolidated package to the shipment. If adding a package, ID is assigned automatically.
+
+        Parameters:
+        ----------
+        item: CustomerOrder or Package
+
+        Returns
+        ----------
+        item
+        """
         if isinstance(item, Package):
             # MUST BE FOR CONSOLIDATING PACKAGES
-            # adding a new package must be done from CustomerOrder
+            # adding a non-consolidated package must be done from CustomerOrder
             package = item
             if not package.consolidated:
                 raise ValueError("Cannot add package directly via Shipment unless consolidated.")
             else:
+                # add_package assigns an ID
+                # does not alter customer order
+                # just adds it back to shipment
+                print(f'added back to shipment: {package}')
                 self.packages.append(package)
-                # assign ID to package once ALL packages have been deconsolidated
+                # change this if a new package ID system
+                package.package_id = len(self.packages)
                 return package
             
         elif isinstance(item, CustomerOrder):
@@ -589,36 +705,27 @@ class Shipment:
     # can optimize
     # takes a list of package IDs
     def consolidate(self, dimensions: iter, packages, description: str):
-        # FIXME this is just copy pasted from shipment
-        def remove_package(self, package_id):
-            print(f'removing box {package_id} for consolidation')
-            pk = self.package(package_id)
-            if pk is None:
-                raise ValueError("Cannot consolidate nonexistent package.")
-            else:
-                self.packages.remove(pk)
-                # fixme once package id assignment is better
-                pk.package_id = -1
-                #self.assign_package_IDs()   # do this once all packages have been removed
-                return pk
-        
-        def do_consolidate(packages):
+
+        if len(packages) < 2:
+            print('Need at least 2 packages to consolidate')
+
+        else:
             shipment = self.shipment_order.shipment
+            print(f'FROM SHIPMENT CONSOLIDATE(): PACKAGE LIST = {packages}')
             cons = ConsolidatedPackage(
                 dimensions=dimensions,
                 dim_units='INCH',
                 customer_order=self._shipment_order,
                 description=description,
-                package_list=packages,
+                package_list=packages
             )
- 
             self.assign_package_IDs()
 
-        if len(packages) < 2:
-            print('Need at least 2 packages to consolidate')
-        else:
-            do_consolidate(packages=packages)
-
+    def deconsolidate(self, package):
+        if not isinstance(package, ConsolidatedPackage):
+            raise ValueError("Cannot deconsolidate non-consolidated package.")
+        
+        package.remove_packages(remove_all=True)
 
     # for converting customer data to excel sheet
     # returns a list of dict representations of customers
@@ -652,6 +759,8 @@ class Shipment:
             # bold whichever dimension applies
             pk_info = {}
             for pk in order.packages:
+                print(f'---------------PACKAGE: {pk}')
+                print(f'---------------DIM UNITS: {pk.dim_units}')
                 box_num += 1
                 pk_details = {}
                 pk_details["Units"] = pk.dim_units
@@ -699,6 +808,8 @@ class Save_Data:
         self.shipments = []     # orders are stored in shipments
 
     def load_data(self, restart_data=False):
+        if restart_data:
+                return self.initialize_default_data()
         try:
             with open(self.file_path, "rb") as file:
                 shipment = pickle.load(file)
@@ -722,7 +833,8 @@ class Save_Data:
     def erase_data(self):
         if os.path.exists(self.file_path):
             os.remove(self.file_path)
-            os.remove(self.old_file_path)
+            if os.path.exists(self.old_file_path):
+                os.remove(self.old_file_path)
         else:
             print("Nothing to erase")
     
@@ -786,7 +898,7 @@ class Save_Data:
                 consignee=consignee, 
                 description="Cellphones", 
                 has_batteries=True)
-        print(f'----------p1 units: {p1.dim_units}')
+
         customer_order1.assign_shipment(shipment)
 
         customer2 = Customer("Uzoma Emah", "5493 Crabapple Loop SW", "Calgary", "Alberta", 
@@ -798,6 +910,6 @@ class Save_Data:
         p2 = Package((30, 30, 30), "INCH", 3.0, customer_order2, customer2, consignee, "baby monitor", True)
         p3 = Package((16, 23.5, 16), "CM", 4, customer_order2, customer2, consignee, "diapers", False)
         customer_order2.assign_shipment(shipment)
-        print('--------DONE')
+        print('--------DONE INITIALIZING DATA')
         return shipment
         

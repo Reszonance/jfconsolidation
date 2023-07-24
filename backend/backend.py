@@ -1,3 +1,4 @@
+"""
 from .shipping_objects import *
 from .excelthings import *
 
@@ -50,3 +51,4 @@ if shipment is None:
   p3 = Package((16, 23.5, 16), "CM", 4, customer_order2, customer2, consignee, "diapers", False)
   customer_order2.assign_shipment(shipment)
 print('------DONE')
+"""

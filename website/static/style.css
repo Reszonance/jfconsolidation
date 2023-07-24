@@ -58,6 +58,27 @@
   cursor: pointer
 }
 
+.consolidated-dimensions {
+  display: none;
+  height: 50px;
+  background: #fff;
+  color: #000;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  margin-top: 15px;
+  border-radius: 8px;
+  cursor: none;
+}
+
+.consolidated-dimensions.consolidate {
+  display: flex;
+}
+
+.small-input.consolidate {
+  width: 30%;
+}
+
 .select-btn .arrow-dwn {
   display: flex;
   height: 21px;

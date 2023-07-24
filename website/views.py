@@ -22,35 +22,11 @@ views = Blueprint('views', __name__)
 @views.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'POST':
-        note = request.form.get('note')
-
-        if len(note) < 1:
-            flash('Note is too short', category='error')
-        else:
-            new_note = Note(data=note, user_id=current_user.id)
-            db.session.add(new_note)
-            db.session.commit()
-            flash('Note added', category='success')
+        pass
     # applies html template to homepage
     # passes user as a variable to be used in template
-    return render_template("home.html", user=current_user, shipment=shipment, package_num=shipment.package_num)
-
-# region delete note
-@views.route('/delete-note', methods=['POST'])
-def delete_note():
-    # request is sent as data parameter of request object (not form)
-    # request.data is json string sent from index.js
-
-    note = json.loads(request.data) # loads js object defined in index.js
-    noteId = note['noteId']
-    note = Note.query.get(noteId)
-    if note:
-        if note.user_id == current_user.id:
-            db.session.delete(note)
-            db.session.commit()
-    
-    return jsonify({})  # jsonify empty python dictionary
-# endregion
+    print(f'----------- PACKAGES: {shipment.packages}')
+    return render_template("home.html", shipment=shipment, package_num=shipment.package_num)
 
 @views.route('/delete-package', methods=['POST'])
 def delete_package():
@@ -73,7 +49,6 @@ def consolidate():
     print(f'-------- PK IDS FROM consolidate() IN VIEWS: {pk_ids}')
     shipment.consolidate([0, 0, 0], pk_ids, "Consolidated boxes")
     #saver.save_data(shipment)
-    print('consolidate from views, returning empty dict')
     return jsonify({})
 
 # VIEW/EDIT PACKAGE INFO HERE
@@ -81,6 +56,7 @@ def consolidate():
 # additional info: has batteries, wants insurance
 @views.route('/pkg/<string:pk_id>', methods=['GET', 'POST'])
 def pk_details(pk_id):
+    # pk_id is passed as a string
     package = shipment.package(pk_id)
     print(f'------PACKAGE: {package}')
     if request.method == 'POST':
@@ -313,7 +289,5 @@ def download_excel():
 
 #TODO:
 # find a way to view customer orders
-# box consolidation: backend part
-# cloudflare free page hosting
 # fix add_order pickle error
 # do customer database system
