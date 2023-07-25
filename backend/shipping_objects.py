@@ -1,6 +1,9 @@
 import datetime, pytz, pickle, os, numbers, shutil
 import backend.excelthings as xl
 
+from datetime import datetime
+
+
 # MEASUREMENTS ARE DEFINED IN INCHES, KG
 # fixme create unique code for package
 # PACKAGES MUST BELONG TO A CUSTOMER
@@ -815,69 +818,80 @@ class Shipment:
         xl.write_to_sheet(filename, self)
         return filename
 
+class Session:
+    # stores all shipments
+    # export this object as a file from SaveData
+    def __init__(self, shipments=[], customers=[]):
+        self.shipments = shipments     # orders are stored in shipments
+        self.active_shipment = None
+        self.customers = customers
 
-# only saves data for one shipment for now
-# TODO: save file now stores ALL shipments and customers, not just one shipment
-# save file pickles Save_Data object
-class Save_Data:
-    _instance = None
-    def __new__(cls, filename):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+
+# save file pickles Session object
+class SaveData:
+    def __new__(cls, filename="pickle_data.json"):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(SaveData, cls).__new__(cls)
+        return cls.instance
     
     def __init__(self, filename="pickle_data.json"):
-        if hasattr(self, 'initialized'):
-            raise ValueError("Another instance of Save_Data cannot be created.")
-        self.initialized = True
         root_folder = os.getcwd()  # Get the current working directory (root folder)
         save_folder = os.path.join(root_folder, "backend", "save_files")
         self.filename = filename
+        self.old_filename = 'old_'+filename
         self.file_path = os.path.join(save_folder, filename)
-        self.old_file_path = os.path.join(save_folder, 'old_'+filename)
-
-        self.shipments = []     # orders are stored in shipments
+        self.old_file_path = os.path.join(save_folder, self.old_filename)
 
     def load_data(self, restart_data=False):
         if restart_data:
                 return self.initialize_default_data()
+        
         try:
             with open(self.file_path, "rb") as file:
-                shipment = pickle.load(file)
-            return shipment
+                session = pickle.load(file)
+            return session
         except FileNotFoundError:
-            print(f"The file '{self.file_path}' does not exist. Making new one.")
-            if restart_data:
-                return self.initialize_default_data()
-            return None
+            print(f"The file path '{self.file_path}' does not exist. Initializing new data.")
+            return self.initialize_default_data()
 
-    def save_data(self, shipment):
+    def save_data(self, session):
+        print("Saving session data in file.")
         """
         if os.path.exists(self.old_file_path):
             os.remove(self.old_file_path)
         if os.path.exists(self.file_path):
-            os.rename(self.filename, 'old_'+self.filename)
-        """
+            os.rename(self.filename, self.old_filename)
+            """
+
         with open(self.file_path, "wb") as file:
-            pickle.dump(shipment, file)
+            pickle.dump(session, file)
+    
+    def export_data(self, session, filename):
+        """
+        Returns file name of a pickle file containing session data.
+        """
+        with open(filename, "wb") as file:
+            pickle.dump(session, file)
+        return filename
 
     def erase_data(self):
         if os.path.exists(self.file_path):
+            print("Erasing data.")
             os.remove(self.file_path)
             if os.path.exists(self.old_file_path):
                 os.remove(self.old_file_path)
         else:
-            print("Nothing to erase")
+            print("No data to erase.")
     
     # replaces current save file with old one
     # in case of corruption
     def restore_data(self):
         if os.path.exists(self.file_path):
             os.remove(self.file_path)
-        if os.path.exists(self.old_file_path):
+        try:
             shutil.copy2(self.old_file_path, self.file_path)
-        else:
-            ValueError("Cannot find old data to restore.")
+        except FileNotFoundError:
+            print("Cannot find old data to restore.")
     
     # overwrites current data and replaces it with this default
     def initialize_default_data(self):
@@ -941,6 +955,11 @@ class Save_Data:
         p2 = Package((30, 30, 30), "INCH", 3.0, customer_order2, customer2, consignee, "baby monitor", True)
         p3 = Package((16, 23.5, 16), "CM", 4, customer_order2, customer2, consignee, "diapers", False)
         customer_order2.assign_shipment(shipment)
+
+        shipments = [shipment]
+        customers = [company_customer, customer1, customer2]
+        session = Session(shipments=shipments, customers=customers)
+        session.active_shipment = shipments[0]  # change once active shipment can be selected from homepage
         print('--------DONE INITIALIZING DATA')
-        return shipment
+        return session
         

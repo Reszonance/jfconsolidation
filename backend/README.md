@@ -1,2 +1,0 @@
-# jfconsolidation
-consolidation project

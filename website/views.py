@@ -7,8 +7,9 @@ from . import db
 import json, os
 
 from backend.shipping_objects import *
-saver = Save_Data(filename="pickle_data.json")
-shipment = saver.load_data(restart_data=True)
+saver = SaveData(filename="pickle_data.json")
+session = saver.load_data(restart_data=True)
+shipment = session.active_shipment
 
 print('---------RESTARTING VIEWS')
 # blueprint defines a bunch of URLs
@@ -26,6 +27,49 @@ def home():
     # applies html template to homepage
     # passes user as a variable to be used in template
     return render_template("home.html", shipment=shipment, package_num=shipment.package_num)
+
+@views.route('/upload', methods=['GET', 'POST'])
+def upload_data():
+    global session
+    global shipment
+    if request.method == 'POST':
+        # Check if a file was submitted
+        if 'file' not in request.files:
+            print('NO FILE PART FOUND')
+            return "No file part found", 400
+        
+        file = request.files['file']
+
+        if file.filename == '':
+            print('NO SELECTED FILE')
+            return "No selected file", 400
+        
+        #if file and file.filename:
+        try:
+            # Unpickle the file and check if it is a valid Shipment object
+            session = pickle.load(file)
+            shipment = session.active_shipment
+
+            flash('Session data uploaded', category='success')
+            return redirect(url_for('views.home'))
+
+        except pickle.UnpicklingError:
+            return "Error unpickling the file. File upload failed."
+
+        return "No file selected. File upload failed."
+    elif request.method == 'GET':
+        return render_template("upload.html")
+
+@views.route('/export-data', methods=['GET'])
+def export_data():
+    current_date = datetime.now()
+    filename = 'session' + current_date.strftime("%d%m%Y") + '.jf'
+    #file_path = os.path.join(os.path.dirname(__file__), filename)
+    current_directory = os.path.abspath(os.path.dirname(__file__))
+    parent_directory = os.path.abspath(os.path.join(current_directory, ".."))
+    file_path = os.path.join(parent_directory, filename)
+    saver.export_data(session, filename)
+    return send_file(file_path, as_attachment=True)
 
 @views.route('/delete-package', methods=['POST'])
 def delete_package():
@@ -265,25 +309,6 @@ def add_order():
         }
     }
     
-    # region chunk
-    """
-    if form_data['save_btn'] == 'shipper-info':
-        package.shipper.name = form_data['shipper_name']
-        package.shipper.email = form_data['shipper_email']
-        package.shipper.phone = form_data['shipper_phone']
-        package.shipper.address = form_data['shipper_address']
-    elif form_data['save_btn'] == 'consignee-info':
-        package.consignee.name = form_data['consignee_name']
-        package.consignee.email = form_data['consignee_email']
-        package.consignee.phone = form_data['consignee_phone']
-        package.consignee.address = form_data['consignee_address']
-    elif form_data['save_btn'] == 'additional-info':
-        package.has_batteries = True if 'has_batteries' in form_data else False
-        package.insurance = True if 'wants_insurance' in form_data else False
-    else:
-        raise ValueError("Do not recognize save button value, check pk_details.html")
-    """
-    # endregion
     return render_template('add_order.html', data=autofill_dict)
 
 @views.route("/ajaxlivesearch", methods=['POST', 'GET'])
@@ -296,8 +321,7 @@ def ajaxlivesearch():
 @views.route('/download-excel', methods=['GET'])
 def download_excel():
     filename = 'exported_data.xlsx'
-    file_path = os.path.join(os.path.dirname(__file__), filename)
-    shipment.export_excel(file_path)
+    #file_path = os.path.join(os.path.dirname(__file__), filename)
     shipment.export_excel(filename)
     return send_file(filename, as_attachment=True)
 
