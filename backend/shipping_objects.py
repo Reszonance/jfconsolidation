@@ -64,11 +64,11 @@ class Package:
     def consolidated(self):
         return self._consolidated
     @consolidated.setter
-    def consolidated(self, new_value, consolidated_box):
+    def consolidated(self, new_value, consolidated_box=None):
         self._consolidated = new_value
         if new_value == True:
             self.cons_package = consolidated_box
-        else:
+        elif self.consolidated:
             # remove from consolidated package
             self.cons_package.packages.remove(self)
             self.cons_package.generate_ids()

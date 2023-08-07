@@ -127,11 +127,35 @@
         <input type="text" class="form-control" id="shipper-zip" name="shipper_zip" value="{{ order.customer.zip_code }}">
       </div>
       <button type="submit" name="save_btn" class="save-btn" value="order-info">Save</button>
-      <button type="submit" name="delete_order" class="save-btn" value="delete-order">Delete Order</button>
+
+      <button type="button" id="delete-button" onclick="toggleConfirmation()">Delete Order</button>
+      <button type="submit" name="save_btn" class="save-btn" value="delete-order" 
+              id="yes-button" style="display: none;">Yes</button>
+      <button type="button" id="no-button"
+              style="display: none;"
+              onclick="toggleConfirmation()">No</button>
     </form>
   </div>
 </ul>
 
+<script>
+function toggleConfirmation() {
+  const deleteButton = document.getElementById('delete-button');
+  const yesButton = document.getElementById('yes-button');
+  const noButton = document.getElementById('no-button');
+  if (yesButton.style.display != 'none') {
+    deleteButton.style.display = 'block';
+    yesButton.style.display = 'none';
+    noButton.style.display = 'none';
+  } else {
+    //deleteButton.style.display = 'none';
+    yesButton.style.display = 'block';
+    noButton.style.display = 'block';
+  }
+}
+
+
+</script>
 
 
 {% endblock %}

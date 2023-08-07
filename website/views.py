@@ -154,6 +154,8 @@ def view_order():
             form_autofill.update_order_details(order, form_data)
         elif form_data['save_btn'] == 'delete-order':
             print('deleting order')
+            shipment.remove_from_shipment(order)
+            return render_template("home.html", shipment=shipment, package_num=shipment.package_num)
     data = form_autofill.get_autofill_dict(order=order)
 
     return render_template('view_order.html', order=order, data=data)
