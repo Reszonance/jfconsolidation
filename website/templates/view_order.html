@@ -1,0 +1,137 @@
+<!-- extend base template-->
+{% extends "base.html" %} {% block title %}View Order{% endblock %}
+
+{% block style %}
+<!-- aligns text boxes -->
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% endblock %}
+
+{% block content %}
+<br>
+<h1 align="center">Order {{ order.id }}—{{ order.customer.name }}</h1>
+<br />
+
+<ul class="list-group list-group-flush">
+  {% if order.packages|length == 0 %}
+  <p>No boxes in order. Please add some.</p>
+  {% endif %}
+  {% for pk in order.packages %}
+  <li class="list-group-item">
+    <div class="order-info">
+      <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}">
+        {{"Box " ~ pk.package_id}}
+      </a>
+      <span class="description">{{"— " ~ pk.shipper.name}}</span>
+    </div>
+    <div class="actions">
+      <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}" class="btn btn-link">Edit</a>
+      <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('view-{{ pk.package_id }}')">View</a>
+      <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}', 'permanent')">Delete from Order</a>
+    </div>
+    <div id="view-{{ pk.package_id }}" class="view-form" style="display: none;">
+      <p>Description: {{ pk.description }}</p>
+      <p>Has Batteries: {{ pk.has_batteries }}</p>
+      <p>Is Fragile: {{ pk.fragile }}</p>
+      <p>Dimensions ({{pk.dim_units}}): {{ pk.dimensions }}</p>
+      <p>Weight (kg): {{ pk.weight }}</p>
+    </div>
+  </li>
+  {% endfor %}
+  <h2>Shipment Information</h2>
+  <form class="edit-form" id="shipper-form" method="POST" action="{{ url_for('views.view_order', order_id=order.id) }}">
+  <!-- #region shipment information -->
+  <div class="form-section">
+    <div class="form-check">
+      <div id="order-notes">
+        <label for="order-notes">Notes</label>
+        <textarea id="order-notes" name="order-notes">{{order.notes}}</textarea>
+      </div>
+    </div>
+  </div>
+  <div class="form-section">
+    <label for="delivery-method">Delivery Method *</label>
+    <div class="delivery-method">
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="delivery-method" 
+          id="office-office" value="office-office" 
+          {% if order.get_delivery_method() == 'Office to Office' %}checked{% endif %}
+          required
+        >
+        <label class="form-check-label" for="office-office">Office to Office</label>
+        <input class="form-check-input" type="radio" name="delivery-method" 
+          id="office-door" value="office-door" 
+          {% if order.get_delivery_method() == 'Office to Door' %}checked{% endif %}
+          required
+        >
+        <label class="form-check-label" for="office-door">Office to Door</label>
+        <input class="form-check-input" type="radio" name="delivery-method" 
+          id="door-office" value="door-office" 
+          {% if order.get_delivery_method() == 'Door to Office' %}checked{% endif %}
+          required
+        >
+        <label class="form-check-label" for="door-office">Door to Office</label>
+        <input class="form-check-input" type="radio" name="delivery-method" 
+          id="door-door" value="door-door" 
+          {% if order.get_delivery_method() == 'Door to Door' %}checked{% endif %}
+          required
+        >
+        <label class="form-check-label" for="door-door">Door to Door</label>
+      </div>
+      <div class="form-check">
+        <div id="pickup-address-section">
+          <label for="pickup-address">Pickup Address</label><p>—If pickup is requested.</p>
+          <textarea id="pickup-address" name="pickup-address">{{order.pickup_address}}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="form-section">
+    <label for="insurance"><strong>Insurance</strong></label>
+    <input type="checkbox" id="insurance" name="insurance" 
+      {% if order.insurance %}checked{% endif %}
+    >
+    <label for="fragile"><strong>Fragile</strong></label>
+    <input type="checkbox" id="fragile" name="fragile" 
+      {% if order.fragile %}checked{% endif %}
+    >
+  </div>
+
+  <div class="form-section">
+    <h3>Shipper/Customer</h3>
+      <div class="form-group">
+        <label for="shipper-name">Name:</label>
+        <input type="text" class="form-control" id="shipper-name" name="shipper_name" value="{{ order.customer.name }}">
+      </div>
+      <div class="form-group">
+        <label for="shipper-email">Email:</label>
+        <input type="email" class="form-control" id="shipper-email" name="shipper_email" value="{{ order.customer.email }}">
+      </div>
+      <div class="form-group">
+        <label for="shipper-phone">Phone Number:</label>
+        <input type="text" class="form-control" id="shipper-phone" name="shipper_phone" value="{{ order.customer.phone }}">
+      </div>
+      <div class="form-group">
+        <label for="shipper-address">Address:</label>
+        <input type="text" class="form-control" id="shipper-address" name="shipper_address" value="{{ order.customer.address }}">
+      </div>
+      <div class="form-group">
+        <label for="shipper-city">City:</label>
+        <input type="text" class="form-control" id="shipper-city" name="shipper_city" value="{{ order.customer.city }}">
+      </div>
+      <div class="form-group">
+        <label for="shipper-name">State/Province:</label>
+        <input type="text" class="form-control" id="shipper-state" name="shipper_state" value="{{ order.customer.state }}">
+      </div>
+      <div class="form-group">
+        <label for="shipper-name">Zip Code:</label>
+        <input type="text" class="form-control" id="shipper-zip" name="shipper_zip" value="{{ order.customer.zip_code }}">
+      </div>
+      <button type="submit" name="save_btn" class="save-btn" value="order-info">Save</button>
+      <button type="submit" name="delete_order" class="save-btn" value="delete-order">Delete Order</button>
+    </form>
+  </div>
+</ul>
+
+
+
+{% endblock %}

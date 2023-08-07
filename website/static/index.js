@@ -30,8 +30,10 @@ function consolidate_package(checked_items) {
   })
 }
 
-function toggleView(packageId) {
-  var viewForm = document.getElementById("view-form-" + packageId);
+function toggleView(elementID) {
+  console.log(elementID)
+  //var viewForm = document.getElementById("view-form-" + packageId);
+  var viewForm = document.getElementById(elementID);
   if (viewForm.style.display === "none") {
     viewForm.style.display = "block";
   } else {

@@ -3,7 +3,7 @@
 from flask import Blueprint, render_template, request, flash, jsonify, redirect, url_for, send_file
 from flask_login import login_required, current_user
 from .models import Note
-from . import db
+from . import db, form_autofill
 import json, os
 
 from backend.shipping_objects import *
@@ -117,32 +117,11 @@ def pk_details(pk_id):
         form_data = request.form
             # ASSUMES THAT SHIPPER == CUSTOMER
         if form_data['save_btn'] == 'shipper-info':
-            package.customer.name = form_data['shipper_name']
-            package.customer.email = form_data['shipper_email']
-            package.customer.phone = form_data['shipper_phone']
-            package.customer.address = form_data['shipper_address']
-            package.customer.city = form_data['shipper_city']
-            package.customer.state = form_data['shipper_state']
-            package.customer.zip_code = form_data['shipper_zip']
+            form_autofill.assign_customer_info(package.customer, form_data)
         elif form_data['save_btn'] == 'consignee-info':
-            package.consignee.name = form_data['consignee_name']
-            package.consignee.email = form_data['consignee_email']
-            package.consignee.phone = form_data['consignee_phone']
-            package.consignee.address = form_data['consignee_address']
-            package.consignee.city = form_data['consignee_city']
-            package.consignee.state = form_data['consignee_state']
-            package.consignee.zip_code = form_data['consignee_zip']
+            form_autofill.assign_consignee_info(package.consignee, form_data)
         elif form_data['save_btn'] == 'additional-info':
-            package.has_batteries = 'lithium_batteries' in form_data
-            package.fragile = 'is_fragile' in form_data
-            package.set_dimensions(
-                length=float(form_data['length']),
-                width=float(form_data['width']),
-                height=float(form_data['height'])
-            )
-            package.dim_units = form_data['units']
-            package.weight = float(form_data['weight'])
-            package.description = form_data['package_description']
+            form_autofill.assign_package_info(package, form_data)
             saver.save_data(shipment)
             return redirect(url_for('views.home'))
         else:
@@ -154,6 +133,30 @@ def pk_details(pk_id):
             cons_packages.append(pk)
 
     return render_template('pk_details.html', pk=package, cons_packages=cons_packages)
+
+@views.route('/view-order', methods=['GET', 'POST'])
+def view_order():
+    #print(f'order_id: {request.args["order_id"]}')
+    order_id = request.args['order_id']
+    order = None
+    for o in shipment.orders:
+        if o.id == order_id:
+            order = o
+            break
+    else:
+        raise ValueError(f"Order ID {order_id} not found.")
+    
+    if request.method == 'POST':
+        form_data = request.form
+        print(form_data)
+        if form_data['save_btn'] == 'order-info':
+            form_autofill.assign_customer_info(order.customer, form_data)
+            form_autofill.update_order_details(order, form_data)
+        elif form_data['save_btn'] == 'delete-order':
+            print('deleting order')
+    data = form_autofill.get_autofill_dict(order=order)
+
+    return render_template('view_order.html', order=order, data=data)
 
 @views.route('/add-order', methods=['GET', 'POST'])
 def add_order():
@@ -205,6 +208,7 @@ def add_order():
             office_pickup = form_data.get('office-pickup') == 'pick-up'
             insurance = form_data.get('insurance') == 'on' 
             order = CustomerOrder(customer, "", office_dropoff, office_pickup, insurance)
+            order.pickup_address = pickup_address
             order.assign_shipment(shipment)
 
             # region BOXES
@@ -247,69 +251,10 @@ def add_order():
             return redirect(url_for('views.home'))
         elif action == 'cancel':
             return redirect(url_for('views.home'))
+
+    data = form_autofill.get_autofill_dict(debugging_data=True)
     
-    blank_dict = {
-        'shipper_name': '',
-        'shipper_address': '',
-        'shipper_city': '',
-        'shipper_state': '',
-        'shipper_zip': '',
-        'shipper_phone': '',
-        'shipper_email': '',
-        'consignee_name': '',
-        'consignee_address': '',
-        'consignee_city': '',
-        'consignee_state': '',
-        'consignee_zip': '',
-        'consignee_phone': '',
-        'consignee_email': '',
-        'office_dropoff': "",
-        'office_pickup': "",
-        'insurance': "",
-        'box_num': "",
-        'boxes': {
-            'length': "",
-            'width': "",
-            'height': "",
-            'units': '',
-            'weight': "",
-            'description': '',
-            'batteries': "",    # make this required in the html template
-            'fragile': "",
-        }
-    }
-    autofill_dict = {
-        'shipper_name': 'John Doe',
-        'shipper_address': '123 street',
-        'shipper_city': 'Johns city',
-        'shipper_state': 'Johns state',
-        'shipper_zip': 'zip code',
-        'shipper_phone': '2983748932',
-        'shipper_email': 'john@gmail.com',
-        'consignee_name': 'somebody',
-        'consignee_address': 'address',
-        'consignee_city': 'sombody city',
-        'consignee_state': 'somebody state',
-        'consignee_zip': 'somebody zip',
-        'consignee_phone': '4873983',
-        'consignee_email': '',
-        'office_dropoff': False,
-        'office_pickup': False,
-        'insurance': True,
-        'box_num': 1,
-        'boxes': {
-            'length': 2,
-            'width': 10,
-            'height': 3,
-            'units': 'INCH',
-            'weight': 234,
-            'description': 'contains items',
-            'batteries': True,
-            'fragile': False,
-        }
-    }
-    
-    return render_template('add_order.html', data=autofill_dict)
+    return render_template('add_order.html', data=data)
 
 @views.route("/ajaxlivesearch", methods=['POST', 'GET'])
 def ajaxlivesearch():
@@ -328,5 +273,4 @@ def download_excel():
 
 #TODO:
 # find a way to view customer orders
-# fix add_order pickle error
 # do customer database system

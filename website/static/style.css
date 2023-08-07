@@ -1,5 +1,27 @@
 /* home */
 
+.view-btn {
+  display: inline-block;
+  height: auto;
+  background: #0dacc8;
+  color: #fff;
+  font-weight: bold;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  margin: 15px;
+  border-radius: 8px;
+  cursor: none;
+}
+
+.view {
+  display: none;
+}
+
+.active {
+  display: block;
+}
+
 .order-info {
   display: flex;
   align-items: center;
@@ -8,6 +30,7 @@
 .order-info a {
   margin-right: 10px;
 }
+
 
 .actions {
   margin-left: auto;

@@ -34,7 +34,8 @@ class Package:
         self.has_batteries = has_batteries
         self.fragile = fragile
         self.insurance = customer_order.insurance
-        self.consolidated = consolidated
+        self._consolidated = consolidated
+        self.cons_package = None
 
         self._package_id = -1;   # fixme
         self.customer_order.add_package(self)
@@ -58,6 +59,23 @@ class Package:
     def package_id(self, new_value):
         self._package_id = str(new_value)
         return self._package_id
+    
+    @property
+    def consolidated(self):
+        return self._consolidated
+    @consolidated.setter
+    def consolidated(self, new_value, consolidated_box):
+        self._consolidated = new_value
+        if new_value == True:
+            self.cons_package = consolidated_box
+        else:
+            # remove from consolidated package
+            self.cons_package.packages.remove(self)
+            self.cons_package.generate_ids()
+            self.cons_package = None
+        return consolidated_box
+
+
     @property
     def dimensions(self):
         return self._dimensions
@@ -241,7 +259,7 @@ class ConsolidatedPackage(Package):
             
         for pk in packages:
             pk = shipment.package(pk)
-            pk.consolidated = True
+            pk.consolidated = True, self    # setter takes consolidated ID as argument
             # assigns package_id = -1 within function below
             shipment.remove_from_shipment(pk)
             self.packages.append(pk)
@@ -409,20 +427,25 @@ class CustomerDatabase:
 
 # THIS CLASS HAS MOST POWER OVER OTHERS
 # handle most things using this class
-# note: make ID for each order?
 # orders are assigned to shipments later
 # package list not necessary in constrcutor
 # when a new package is created it automatically gets assigned to the list
 class CustomerOrder:
-    def __init__(self, customer, description: str, office_dropoff: bool, office_pickup: bool, wants_insurance: bool):
+    def __init__(self, customer, description: str, office_dropoff: bool, office_pickup: bool, wants_insurance: bool, notes: str=""):
 
         self._customer = customer
         self._description = description
         self.delivery_option = (office_dropoff, office_pickup)
+        self.pickup_address = ""
         self.insurance = wants_insurance
+        self.notes = ""
 
         self._packages = []
         self._shipment = -1
+        self._id = -1
+
+    def __str__(self):
+        return self.customer.name
 
     # class attribute
     delivery_dict = {
@@ -439,6 +462,37 @@ class CustomerOrder:
     @shipment.setter
     def shipment(self, shipment_inst):
         self._shipment = shipment_inst
+
+    @property
+    def id(self):
+        return self._id
+    
+    @id.setter
+    def id(self, new_id):
+        self._id = str(new_id)
+
+    @property
+    def office_dropoff(self):
+        return self.delivery_option[0]
+    
+    @office_dropoff.setter
+    def office_dropoff(self, new_value):
+        ls = list(self.delivery_option)
+        ls[0] = new_value
+        self.delivery_option = tuple(ls)
+        return self.delivery_option
+    
+    @property
+    def office_pickup(self):
+        return self.delivery_option[1]
+    
+    @office_pickup.setter
+    def office_pickup(self, new_value):
+        ls = list(self.delivery_option)
+        ls[1] = new_value
+        self.delivery_option = tuple(ls)
+        return self.delivery_option
+
     
     def assign_shipment(self, shipment_inst):
         if self.shipment != -1:
@@ -448,6 +502,8 @@ class CustomerOrder:
         self.shipment = shipment_inst
         if shipment_inst != -1:
             self.shipment.add_shipping_order(self)
+    
+
 
     @property
     def customer(self):
@@ -472,7 +528,11 @@ class CustomerOrder:
         if self.package_by_id(package) is None:
             raise ValueError("Cannot remove nonexistent package from order.")
         
-        self.packages.remove(package)
+        try:
+            self.packages.remove(package)
+        except ValueError:
+            print("Package not found in customer order list but still exists in shipment.")
+
         if self.shipment != -1:
             if not package.consolidated:
                 # consolidated packages are already removed from shipment
@@ -720,17 +780,21 @@ class Shipment:
                 return package
             
         elif isinstance(item, CustomerOrder):
+            # removes all their packages permanently from the shipment
             # TODO: check if removed packages are part of consolidated boxes
             # remove packages and reassign IDs
             customer_order = item
             self.orders.remove(customer_order)
+            customer_order.id = -1
             for pk in customer_order.packages:
-                self.packages.remove(pk)
+                self.packages.remove(pk)    # removes from shipment
+                pk.consolidated = False  # setter removes pk from consolidated list
                 pk.package_id = -1
             return customer_order
 
     def add_shipping_order(self, customer_order):
         self.orders.append(customer_order)
+        customer_order.id = len(self.orders)
         for pk in customer_order.packages:
             self.packages.append(pk)
             pk.package_id = len(self.packages)

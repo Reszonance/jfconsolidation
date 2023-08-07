@@ -55,54 +55,116 @@
   </button>
 </div>
 
-<h1 align="center">Packages</h1>
+<button class="view-btn" onclick="showView('packageView')" align="center">Package View</button>
+<button class="view-btn" onclick="showView('orderView')" align="center">Order View</button>
 <br />
-<!--- #region list orders -->
-<ul class="list-group list-group-flush" id="packages">
-  {% for pk in shipment.packages %}
-  <li class="list-group-item">
-    <div class="order-info">
-      <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}">
-        {{"Box " ~ pk.package_id}}
-      </a>
-      <span class="description">{{"— " ~ pk.shipper.name}}</span>
-    </div>
-    <div class="actions">
-      <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}" class="btn btn-link">Edit</a>
-      <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('{{ pk.package_id }}')">View</a>
-      <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}', 'permanent')">Delete</a>
-    </div>
-    <div id="view-form-{{ pk.package_id }}" class="view-form" style="display: none;">
-      <p>Description: {{ pk.description }}</p>
-      <p>Has Batteries: {{ pk.has_batteries }}</p>
-      <p>Is Fragile: {{ pk.fragile }}</p>
-      <p>Dimensions ({{pk.dim_units}}): {{ pk.dimensions }}</p>
-      <p>Weight (kg): {{ pk.weight }}</p>
 
-      {% if pk.__class__ == 'ConsolidatedPackage' %}
-        {% for box in pk.packages %}
-        {% set pk_id = box.package_id %}
+
+<div id="packageView" class="view active">
+  <!-- Content for Package View -->
+  <h2>Package Information</h2>
+  <p>This is the package view content.</p>
+
+  <ul class="list-group list-group-flush" id="packages">
+    {% for pk in shipment.packages %}
+    <li class="list-group-item">
+      <div class="order-info">
+        <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}">
+          {{"Box " ~ pk.package_id}}
+        </a>
+        <span class="description">{{"— " ~ pk.shipper.name}}</span>
+      </div>
+      <div class="actions">
+        <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}" class="btn btn-link">Edit</a>
+        <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('packageview-{{ pk.package_id }}')">View</a>
+        <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}', 'permanent')">Delete</a>
+      </div>
+      <div id="packageview-{{ pk.package_id }}" class="view-form" style="display: none;">
+        <p>Description: {{ pk.description }}</p>
+        <p>Has Batteries: {{ pk.has_batteries }}</p>
+        <p>Is Fragile: {{ pk.fragile }}</p>
+        <p>Dimensions ({{pk.dim_units}}): {{ pk.dimensions }}</p>
+        <p>Weight (kg): {{ pk.weight }}</p>
+        
+        <!-- these are not showing -->
+        {% if pk.__class__ == 'ConsolidatedPackage' %}
+          {% for box in pk.packages %}
+          {% set pk_id = box.package_id %}
+          <div class="order-info">
+            <a href="{{ url_for('views.pk_details', pk_id=pk_id) }}">
+              {{"Box " ~ pk_id}}
+            </a>
+            <span class="description">{{"— " ~ box.shipper.name}}</span>
+          </div>
+          <div class="actions">
+            <a href="{{ url_for('views.pk_details', pk_id=pk_id) }}" class="btn btn-link">Edit</a>
+            <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('packageview-{{ pk_id }}')">View</a>
+            <a href="javascript:void(0);" onClick="delete_package('{{ pk_id }}')">Delete</a>
+          </div>
+          {% endfor %}
+        {% endif %}
+
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div id="orderView" class="view">
+  <!-- Content for Order View -->
+  <h2>Order Information</h2>
+  <p>This is the order view content.</p>
+  <ul class="list-group list-group-flush" id="packages">
+    {% for order in shipment.orders %}
+    <li class="list-group-item">
+      <div class="order-info">
+        <a href="{{ url_for('views.view_order', order_id=order.id) }}">
+          {{ order.customer.name }}
+        </a>
+        <span class="description">{{" — " ~ order.packages|length ~ " packages" }}</span>
+      </div>
+      <br>
+      <ul class="list-group list-group-flush" id="packages">
+        {% for pk in order.packages %}
         <div class="order-info">
-          <a href="{{ url_for('views.pk_details', pk_id=pk_id) }}">
-            {{"Box " ~ pk_id}}
+          <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}">
+            {{"Box " ~ pk.package_id}}
           </a>
-          <span class="description">{{"— " ~ box.shipper.name}}</span>
+          <span class="description">{{"— " ~ pk.description}}</span>
         </div>
         <div class="actions">
-          <a href="{{ url_for('views.pk_details', pk_id=pk_id) }}" class="btn btn-link">Edit</a>
-          <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('{{ pk_id }}')">View</a>
-          <a href="javascript:void(0);" onClick="delete_package('{{ pk_id }}')">Delete</a>
+          <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}" class="btn btn-link">Edit</a>
+          <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('orderview-{{ pk.package_id }}')">View</a>
+          <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}', 'permanent')">Delete</a>
+        </div>
+        <div id="orderview-{{ pk.package_id }}" class="view-form" style="display: none;">
+          {% if pk.consolidated %}
+          <strong> This box is consolidated. </strong>
+          {% endif %}
+          <p>Dimensions ({{pk.dim_units}}): {{ pk.dimensions }}</p>
+          <p>Weight (kg): {{ pk.weight }}</p>
+          <p>Has Batteries: {{ pk.has_batteries }}</p>
+          <p>Is Fragile: {{ pk.fragile }}</p>
         </div>
         {% endfor %}
-      {% endif %}
-
-    </div>
-  </li>
-  {% endfor %}
-</ul>
-<!-- #endregion -->
+      </ul>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
 
 <script>
+
+function showView(viewId) {
+    // Hide all views first
+    const views = document.getElementsByClassName('view');
+    for (let i = 0; i < views.length; i++) {
+        views[i].classList.remove('active');
+    }
+
+    // Show the selected view
+    document.getElementById(viewId).classList.add('active');
+}
 
 const selectBtn = document.querySelector(".select-btn"),
       saveBtn = document.querySelector(".save-btn"),
