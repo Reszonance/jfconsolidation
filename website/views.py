@@ -7,9 +7,11 @@ from . import db, form_autofill
 import json, os
 
 from backend.shipping_objects import *
-saver = SaveData(filename="pickle_data.json")
-session = saver.load_data(restart_data=True)
+debugging = False
+saver = SaveData()
+session = saver.load_data(debugging=debugging)
 shipment = session.active_shipment
+
 
 print('---------RESTARTING VIEWS')
 # blueprint defines a bunch of URLs
@@ -62,13 +64,9 @@ def upload_data():
 
 @views.route('/export-data', methods=['GET'])
 def export_data():
-    current_date = datetime.now()
-    filename = 'session' + current_date.strftime("%d%m%Y") + '.jf'
-    #file_path = os.path.join(os.path.dirname(__file__), filename)
-    current_directory = os.path.abspath(os.path.dirname(__file__))
-    parent_directory = os.path.abspath(os.path.join(current_directory, ".."))
-    file_path = os.path.join(parent_directory, filename)
-    saver.export_data(session, filename)
+    file_path = saver.file_path
+    print(f'EXPORT DATA FILEPATH: {file_path}')
+    saver.export_data(session, export_current_data=True)
     return send_file(file_path, as_attachment=True)
 
 @views.route('/delete-package', methods=['POST'])
@@ -93,7 +91,7 @@ def delete_package():
         print(f'REMOVE PERMANENTLY FROM SHIPMENT: {pk_id}')
         pk = shipment.package(pk_id)    # retrieves package based on id
         pk.customer_order.remove_package(pk)
-    saver.save_data(shipment)
+    saver.save_data(session)
 
     return jsonify({})  # jsonify empty python dictionary
 
@@ -103,7 +101,7 @@ def consolidate():
     # request.data is json string sent from index.js
     pk_ids = json.loads(request.data)    # js object defined in index.js
     shipment.consolidate([0, 0, 0], pk_ids)
-    #saver.save_data(shipment)
+    #saver.save_data(session)
     return jsonify({})
 
 # VIEW/EDIT PACKAGE INFO HERE
@@ -122,7 +120,7 @@ def pk_details(pk_id):
             form_autofill.assign_consignee_info(package.consignee, form_data)
         elif form_data['save_btn'] == 'additional-info':
             form_autofill.assign_package_info(package, form_data)
-            saver.save_data(shipment)
+            saver.save_data(session)
             return redirect(url_for('views.home'))
         else:
             raise ValueError("Do not recognize save button value, check pk_details.html")
@@ -163,12 +161,12 @@ def view_order():
 @views.route('/add-order', methods=['GET', 'POST'])
 def add_order():
     global shipment
+    global debugging
     if request.method == 'POST':
         form_data = request.form
         action = form_data.get('action')
 
         customer = None
-        package = None
         # NOTE: 
         # default unit for weight is kg
         # delivery address == consignee address
@@ -230,7 +228,10 @@ def add_order():
                        float(form_data.get(f'width-{i}')),
                        float(form_data.get(f'height-{i}')))
                 units = form_data.get(f'units-{i}')
-                weight = float(form_data[f'weight-{i}'])
+                weight = form_data[f'weight-{i}']
+                weight = float(''.join(filter(lambda char: char.isdigit() or char == '.', weight)))
+                print(f'------WEIGHT: {weight}')
+
                 desc = form_data[f'box-cargo-description-{i}']
                 batteries = form_data.get(f'box-lithium-batteries-{i}') == 'on' 
                 fragile = form_data.get(f'box-fragile-{i}') == 'on'
@@ -242,19 +243,15 @@ def add_order():
                 {% set data = {'boxes':{}} %}
             {% endif %}
             """
-            print('-----------------SHIPMENT')
-            print(shipment.packages)
-            print(order)
+            print(f'-----------------ORDER ADDED TO SHIPMENT: {order.customer.name}')
             flash('Order added', category='success')
-            autofill_dict = {'boxes':{}}
             
-            saver.save_data(shipment)
-            #return render_template('add_order.html', data=autofill_dict)
+            saver.save_data(session)
             return redirect(url_for('views.home'))
         elif action == 'cancel':
             return redirect(url_for('views.home'))
 
-    data = form_autofill.get_autofill_dict(debugging_data=True)
+    data = form_autofill.get_autofill_dict(debugging=debugging)
     
     return render_template('add_order.html', data=data)
 
@@ -268,9 +265,9 @@ def ajaxlivesearch():
 @views.route('/download-excel', methods=['GET'])
 def download_excel():
     filename = 'exported_data.xlsx'
-    #file_path = os.path.join(os.path.dirname(__file__), filename)
-    shipment.export_excel(filename)
-    return send_file(filename, as_attachment=True)
+    #saver.save_data(session)
+    file_name = shipment.export_excel(filename)
+    return send_file(file_name, as_attachment=True)
 
 
 #TODO:

@@ -106,11 +106,11 @@ def assign_package_info(package, data):
     return package
 
 
-def get_autofill_dict(customer=None, consignee=None, order=None, debugging_data=False, no_data=False):
+def get_autofill_dict(customer=None, consignee=None, order=None, debugging=False, no_data=False):
     """
     Returns data (dict) for the HTML template to use.
-    order cannot be None if debugging_data and no_data are false.
-    debugging_data and no_data autofill the data with preset
+    order cannot be None if no_data and debugging is false.
+    debugging and no_data autofill the data with preset
     values (testing and blank values respectively).
 
     Parameters:
@@ -122,7 +122,7 @@ def get_autofill_dict(customer=None, consignee=None, order=None, debugging_data=
     ----------
     package
     """
-    if debugging_data:
+    if debugging:
       autofill_dict = {
         'shipper_name': 'John Doe',
         'shipper_address': '123 street',
@@ -138,9 +138,9 @@ def get_autofill_dict(customer=None, consignee=None, order=None, debugging_data=
         'consignee_zip': 'somebody zip',
         'consignee_phone': '4873983',
         'consignee_email': '',
-        'office_dropoff': False,
-        'office_pickup': False,
-        'insurance': True,
+        'office_dropoff': True,
+        'office_pickup': True,
+        'insurance': False,
         'box_num': 2,
         'boxes': {
             '1': {
@@ -166,7 +166,7 @@ def get_autofill_dict(customer=None, consignee=None, order=None, debugging_data=
         }
     }
       return autofill_dict
-    elif no_data:
+    elif order is None:
       blank_dict = {
           'shipper_name': '',
           'shipper_address': '',
@@ -199,8 +199,7 @@ def get_autofill_dict(customer=None, consignee=None, order=None, debugging_data=
       }
       return blank_dict
     
-    if order is None:
-       raise AssertionError("Order cannot be None for autofill data.")
+       #raise AssertionError("Order cannot be None for autofill data.")
     data = {}
     data_list = []
 

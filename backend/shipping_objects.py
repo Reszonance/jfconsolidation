@@ -1,8 +1,7 @@
 import datetime, pytz, pickle, os, numbers, shutil
 import backend.excelthings as xl
 
-from datetime import datetime
-
+#from datetime import datetime
 
 # MEASUREMENTS ARE DEFINED IN INCHES, KG
 # fixme create unique code for package
@@ -851,20 +850,32 @@ class Shipment:
     # for converting customer data to excel sheet
     # returns a list of dict representations of customers
     def get_customer_data(self):
-        return [c.get_dict() for c in self._orders_array.customer]
+        return [c.get_dict() for c in self.orders.customer]
     
     def get_package_data(self):
         return [p.get_dict() for p in self.packages]
     
-        # need some things
-        # returns a nested dict of customer orders
-        # DEFINES HOW DATA APPEARS IN EXCEL SHEET (ie. which data to show)
-        # look at example customer info sheet to view structure
     def generate_excel_data(self):
+        """
+        Defines what data is sent to exported excel sheet.
+        Returns order information viewable by excel sheet.
+        excelthings.py is for formatting the excel sheet.
+        See customer_info_ideal_template for how excel sheet is presented.
+
+        Parameters:
+        ----------
+        None
+
+        Returns
+        ----------
+        Dict containing shipment data viewable by excel sheet.
+        """
         data = {}
         box_num = 0
+        print(f'ORDERS PASSED TO EXCEL EXPORT (via Shipment): {len(self.orders)}')
 
-        for order in self._orders_array:
+        for order in self.orders:
+            print(order.customer.name)
             order_info = {}
             cs_info = {}
             cs_info["Name"] = order.customer.name
@@ -873,15 +884,13 @@ class Shipment:
             cs_info["Delivery Option"] = order.delivery_dict[order.delivery_option]
             cs_info["Wants Insurance"] = order.insurance
             cs_info["Total Cost"] = "=SUM()"
-            cs_info["Notes"] = ""
+            cs_info["Notes"] = order.notes
             order_info["Customer Info"] = cs_info
 
             # ASSUMES DIMENSIONS ARE IN INCHES
             # bold whichever dimension applies
             pk_info = {}
             for pk in order.packages:
-                print(f'---------------PACKAGE: {pk}')
-                print(f'---------------DIM UNITS: {pk.dim_units}')
                 box_num += 1
                 pk_details = {}
                 pk_details["Units"] = pk.dim_units
@@ -900,48 +909,83 @@ class Shipment:
         return data # this is sent to populate_shipment in excelthings
     
     def export_excel(self, filename):
-        print(self.generate_excel_data())
-        # name = "shipment_data.xlsx"
-        xl.write_to_sheet(filename, self)
-        return filename
+        data = self.generate_excel_data()
+        file_path = xl.write_to_sheet(filename, data)
+        return file_path
 
 class Session:
     # stores all shipments
     # export this object as a file from SaveData
-    def __init__(self, shipments=[], customers=[]):
+    def __init__(self, shipments=[], orders=[], customers=[]):
         self.shipments = shipments     # orders are stored in shipments
+        self.orders = orders
         self.active_shipment = None
         self.customers = customers
 
 
 # save file pickles Session object
 class SaveData:
-    def __new__(cls, filename="pickle_data.json"):
+    def __new__(cls):
+        # keep arguments consistent with __init__
         if not hasattr(cls, 'instance'):
             cls.instance = super(SaveData, cls).__new__(cls)
         return cls.instance
     
-    def __init__(self, filename="pickle_data.json"):
+    def __init__(self):
         root_folder = os.getcwd()  # Get the current working directory (root folder)
         save_folder = os.path.join(root_folder, "backend", "save_files")
-        self.filename = filename
-        self.old_filename = 'old_'+filename
-        self.file_path = os.path.join(save_folder, filename)
+        self.temp_folder = os.path.join(root_folder, "backend", "temp_files")
+        self.save_folder = save_folder
+        self.filename = self.get_session_name()
+        self.old_filename = 'old_'+self.filename
+        self.file_path = os.path.join(save_folder, self.filename)
+        
         self.old_file_path = os.path.join(save_folder, self.old_filename)
 
-    def load_data(self, restart_data=False):
-        if restart_data:
-                return self.initialize_default_data()
+        # erase temp files
+        file_list = os.listdir(self.temp_folder)
+        for f in file_list:
+            file_path = os.path.join(self.temp_folder, f)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+                print(f"Removed: {file_path}")
+
+
+    def get_session_name(self):
+        current_month = datetime.datetime.now().strftime('%B')
+        current_day = datetime.datetime.now().day
+        file_name = f"{current_month}{current_day}Session.jf"
+        print(file_name)
+        return file_name
+    
+    def load_data(self, debugging, restart_data=False):
+        if restart_data or debugging:
+            return self.initialize_default_data(debugging)
         
         try:
             with open(self.file_path, "rb") as file:
                 session = pickle.load(file)
             return session
         except FileNotFoundError:
-            print(f"The file path '{self.file_path}' does not exist. Initializing new data.")
-            return self.initialize_default_data()
+                print(f"The file path '{self.file_path}' does not exist. Initializing new data.")
+                return self.initialize_default_data(debugging)
 
-    def save_data(self, session):
+    def save_data(self, session, filename=""):
+        """
+        Saves Session as a pickle file in self.save_folder.
+        Default filename is given by self.get_session_name().
+
+        Parameters:
+        ----------
+        session: Session
+            Session data to save.
+        filename: str
+            Overrides default filename.
+
+        Returns
+        ----------
+        None
+        """
         print("Saving session data in file.")
         """
         if os.path.exists(self.old_file_path):
@@ -949,26 +993,59 @@ class SaveData:
         if os.path.exists(self.file_path):
             os.rename(self.filename, self.old_filename)
             """
-
-        with open(self.file_path, "wb") as file:
+        if not isinstance(session, Session):
+            raise AssertionError("save_data must take a Session object.")
+        
+        if filename == "":
+            filename = self.get_session_name()
+        filepath = os.path.join(self.save_folder, filename)
+        with open(filepath, "wb") as file:
             pickle.dump(session, file)
     
-    def export_data(self, session, filename):
+    def export_data(self, session, filename="", export_current_data=False):
         """
-        Returns file name of a pickle file containing session data.
+        Returns a pickle file containing session data.
+
+        Parameters:
+        ----------
+        filename: str
+            Search save_files for this filename. If it doesn't exist,
+            create a new one.
+        session: Session
+            Session data to export.
+
+        Returns
+        ----------
+        filename: str
         """
-        with open(filename, "wb") as file:
+        if export_current_data:
+            print('getting default session name')
+            filename = self.get_session_name()
+            # overwrite existing data if present
+            self.save_data(session, filename=filename)
+        elif filename == "":
+            print('getting default session name')
+            filename = self.get_session_name()
+            filepath = os.path.join(self.save_folder, filename)
+            if os.path.exists(filepath):
+                print(f"The file path '{filepath}' already exists. Exporting data from this filepath.")
+        else:
+            raise AssertionError("Please specify a filename to export data from.")
+        
+        filepath = os.path.join(self.save_folder, filename)
+
+        with open(filepath, "wb") as file:
             pickle.dump(session, file)
-        return filename
+        print(f'return data from {filepath}')
+        return filepath
 
     def erase_data(self):
-        if os.path.exists(self.file_path):
-            print("Erasing data.")
-            os.remove(self.file_path)
-            if os.path.exists(self.old_file_path):
-                os.remove(self.old_file_path)
-        else:
-            print("No data to erase.")
+        file_list = os.listdir(self.save_folder)
+        for f in file_list:
+            file_path = os.path.join(self.save_folder, f)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+                print(f"Removed: {file_path}")
     
     # replaces current save file with old one
     # in case of corruption
@@ -981,7 +1058,7 @@ class SaveData:
             print("Cannot find old data to restore.")
     
     # overwrites current data and replaces it with this default
-    def initialize_default_data(self):
+    def initialize_default_data(self, debugging):
         print('--------INITIALIZING DATA')
         self.erase_data()
         company_customer = Customer(
@@ -1001,52 +1078,57 @@ class SaveData:
             wants_insurance=False
         )
         shipment = Shipment(company_order)
-        customer1 = Customer(
-                        name="Justice Oladeji", 
-                        address="1164 Brightoncrest Green St SE", 
-                        city="Calgary", 
-                        state="Alberta", 
-                        zip_code="T2Z 1G9", 
-                        phone="4039035399", 
-                        email="justice.oladeji@gmail.com")
-        consignee = Consignee(
-                        name="Mr Ben Oguh", 
-                        address="Number 9 Olajide Esan Close Egeda Lagos", 
-                        city="Lagos", 
-                        state="Nigeria",
-                        phone="456463534")
-        customer_order1 = CustomerOrder(
-                            customer=customer1, 
-                            description="cellphones", 
-                            office_dropoff=True, 
-                            office_pickup=True, 
-                            wants_insurance=False)
-        p1 = Package(
-                dimensions=(23, 33, 16), 
-                dim_units="INCH", 
-                weight=7.7, 
-                customer_order=customer_order1, 
-                shipper=customer1, 
-                consignee=consignee, 
-                description="Cellphones", 
-                has_batteries=True)
-
-        customer_order1.assign_shipment(shipment)
-
-        customer2 = Customer("Uzoma Emah", "5493 Crabapple Loop SW", "Calgary", "Alberta", 
-                            "T6X 1S5", "780-802-4712", "info@ozone-concepts.com")
-        consignee = Consignee("Azeez", "3a, Moses Emeiya close, Abule Egba (off Social Club)", "Lagos", "Nigeria", 
-                                "None", "+234 809 899 1920")
-        customer_order2 = CustomerOrder(customer2, "baby stuff", False, False, False)
-        p1 = Package((20, 20, 20), "INCH", 2.0, customer_order2, customer2, consignee, "crib", False)
-        p2 = Package((30, 30, 30), "INCH", 3.0, customer_order2, customer2, consignee, "baby monitor", True)
-        p3 = Package((16, 23.5, 16), "CM", 4, customer_order2, customer2, consignee, "diapers", False)
-        customer_order2.assign_shipment(shipment)
-
         shipments = [shipment]
-        customers = [company_customer, customer1, customer2]
+        customers = [company_customer]
+
+        if debugging:
+            customer1 = Customer(
+                            name="Justice Oladeji", 
+                            address="1164 Brightoncrest Green St SE", 
+                            city="Calgary", 
+                            state="Alberta", 
+                            zip_code="T2Z 1G9", 
+                            phone="4039035399", 
+                            email="justice.oladeji@gmail.com")
+            consignee = Consignee(
+                            name="Mr Ben Oguh", 
+                            address="Number 9 Olajide Esan Close Egeda Lagos", 
+                            city="Lagos", 
+                            state="Nigeria",
+                            phone="456463534")
+            customer_order1 = CustomerOrder(
+                                customer=customer1,
+                                description="cellphones", 
+                                office_dropoff=True, 
+                                office_pickup=True, 
+                                wants_insurance=False)
+            p1 = Package(
+                    dimensions=(23, 33, 16), 
+                    dim_units="INCH", 
+                    weight=7.7, 
+                    customer_order=customer_order1, 
+                    shipper=customer1, 
+                    consignee=consignee, 
+                    description="Cellphones", 
+                    has_batteries=True)
+
+            customer_order1.assign_shipment(shipment)
+
+            customer2 = Customer("Uzoma Emah", "5493 Crabapple Loop SW", "Calgary", "Alberta", 
+                                "T6X 1S5", "780-802-4712", "info@ozone-concepts.com")
+            consignee = Consignee("Azeez", "3a, Moses Emeiya close, Abule Egba (off Social Club)", "Lagos", "Nigeria", 
+                                    "None", "+234 809 899 1920")
+            customer_order2 = CustomerOrder(customer2, "baby stuff", False, False, False)
+            p1 = Package((20, 20, 20), "INCH", 2.0, customer_order2, customer2, consignee, "crib", False)
+            p2 = Package((30, 30, 30), "INCH", 3.0, customer_order2, customer2, consignee, "baby monitor", True)
+            p3 = Package((16, 23.5, 16), "CM", 4, customer_order2, customer2, consignee, "diapers", False)
+            customer_order2.assign_shipment(shipment)
+
+            customers.extend([customer1, customer2])
+
         session = Session(shipments=shipments, customers=customers)
         session.active_shipment = shipments[0]  # change once active shipment can be selected from homepage
         print('--------DONE INITIALIZING DATA')
+        print(f'number of orders: {len(session.active_shipment.orders)}')
         return session
         

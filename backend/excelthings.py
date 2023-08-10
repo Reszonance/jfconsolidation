@@ -2,30 +2,34 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, Border, Side
 from openpyxl.styles.colors import Color
-from .shipping_objects import *
+
+# keep this independent of shipping_objects.py
 
 import os
 
   # returns workbook 
-def initialize_workbook(name, overwrite):
-  if not os.path.exists(name):
+def initialize_workbook(filepath, overwrite):
+  if not os.path.exists(filepath):
     wb = Workbook()  # name is given when saving
   else:
     if overwrite:
-        os.remove(name)
+        os.remove(filepath)
+        # appearing right in local files
         wb = Workbook()
     else:
-      wb = load_workbook(name)
+      print(f'loading previous workbook, no overwrite. workbook filepath: {filepath}')
+      wb = load_workbook(filepath)
   
   return wb
 
-def save_data(wb, name, overwrite):
+def save_data(wb, name, file_path, overwrite):
     # --------------------- SAVE DATA
     # check if workbook already exists
   if not overwrite:
     name = create_new_copy(name, 0)
       
-  wb.save(name)
+  wb.save(file_path)
+  return wb.path
 
 def create_new_copy(sheet_name, copy_version):
     if (os.path.exists(sheet_name)):
@@ -47,7 +51,7 @@ def create_new_copy(sheet_name, copy_version):
           return sheet_name
     return -1
 
-def populate_grades(wb, name):
+def populate_grades(wb):
   ws = wb.active  # gets default sheet
   ws.title = "Grades"
     # do stuff here
@@ -106,19 +110,46 @@ def populate_grades(wb, name):
   for col in range(1, 6):
     ws.cell(1, col).font = Font(bold = True, color="0099CCFF")
 
-def populate_shipment(wb, name, shipment):
+def populate_shipment(wb, data):
+  """
+  Writes data to excel sheet given as wb.
+
+  Parameters:
+  ----------
+  wb: Workbook
+  data: dict
+    Contains data on shipment.
+
+  Returns
+  ----------
+  None
+  """
   ws = wb.active  # gets default sheet
   ws.title = "Customer Info"
   
-  data = shipment.generate_excel_data()
+  print(f'\nPOPULATE SHIPMENT DATA FETCHED FROM GENERATE EXCEL DATA: {data}')
+  """
+  data: {
+    order1: {
+      "Customer Info": {
+        Name, email, phone, notes, etc.
+      }
+      "Packages": {
+        "Box 1": {
+          units, length, weight, batteries, etc.
+        }
+      }
+    }
+  }
+  """
     # format:
     # data["Headings"] = headings
       # headings["Main Headings"]
       # headings["Package Headings"] (return lists)
 
     # data[order] = order_info
-      # order_info["Customer Info"] = cs_info
-      # pk_info["Packages"] = pk_details
+      # order_info["Customer Info"] = customer
+      # order_info["Packages"] = pk_details
         # pk_details["Length"] = pk.dimensions[0] etc.
 
       # region define headings
@@ -163,46 +194,41 @@ def populate_shipment(wb, name, shipment):
   for hd, i in zip(pk_headings, range(pk_headings_start, pk_headings_start+len(pk_headings))):
     ws.cell(1, i).value = hd
   
-      # bold headings
+  # bold headings
   for col in range(1, len(customer_headings)+len(pk_headings)):
     ws.cell(1, col).font = Font(bold = True, italic = True, color="00000000")
   # endregion
 
   # updates for every order
   ws_pointer = 2  # start writing from this row (Name)
-    
   for order in data.keys():
     inc = 0   # pointer relative to ws_pointer
       # unpack order info
     order_info = data[order]  # keys are the same as the headings
 
       # region write customer info
-    cs_info = order_info["Customer Info"]
+    customer = order_info["Customer Info"]
     cost_row = ws_pointer + 5   # which row is the total cost
-    for heading in cs_info.keys():
+    for heading in customer.keys():
       ws.cell(ws_pointer+inc, 1).value = heading
-      ws.cell(ws_pointer+inc, 2).value = cs_info[heading]
+      ws.cell(ws_pointer+inc, 2).value = customer[heading]
       inc += 1
     # endregion
 
-      # region write package info
+    # region write package info
     inc = 0
-    pk_info = order_info["Packages"]
-    for pk_id in pk_info.keys():  # pk_id is a string (eg. Box 1)
-      #print(pk_id)
+    package = order_info["Packages"]
+    for pk_id in package.keys():  # pk_id is a string (eg. Box 1)
       ws.cell(ws_pointer+inc, pk_headings_start).value = pk_id  # label
       ws.cell(ws_pointer+inc, pk_headings_start).font = Font(bold = True, color="00000000")
 
-      pk_details = pk_info[pk_id]
-      print(f'--------{pk_details}')
-
+      pk_details = package[pk_id]
       start_col = pk_headings_start+1
       weight_cols = (8, 9)  # weight and CBM are stored here
       this_row = ws_pointer+inc
       this_col = start_col+len(pk_details)
       battery_answers = ("No", "Yes")   # keeps it consistent
       for hd, j in zip(pk_details.keys(), range(0, len(pk_details))):
-        start_col = pk_headings_start+1
         val = pk_details[hd]
         
         if val == "cbm":
@@ -218,27 +244,37 @@ def populate_shipment(wb, name, shipment):
             raise ValueError("Invalid measurement unit. Accepted units: INCH, CM")
 
           val = f"={dims[0]}*{dims[1]}*{dims[2]}/6000"
+          cbm_int = pk_details["Length"]*pk_details["Width"]*pk_details["Height"]/6000
+          if pk_details["Units"] == "INCH":
+            cbm_int = cbm_int * 2.54 * 2.54 * 2.54
+          gw_int = pk_details["Gross Weight (kg)"]
         
         if hd == "Has Batteries":
           val = battery_answers[1] if val else battery_answers[0]
         ws.cell(this_row, start_col+j).value = val
         
         # region calculate costs
+      # minimum chargeable weight is 10kg
       this_col = start_col+len(pk_details)    # start from cost details
       # gw = ws.cell(this_row, weight_cols[0]).value
       # cbm = ws.cell(this_row, weight_cols[1]).value
-      gw = f"{get_column_letter(weight_cols[0])}{this_row}"
-      cbm = f"{get_column_letter(weight_cols[1])}{this_row}"
-      ew = f"MAX({gw},{cbm})"    # effective weight
-
       pricewb = 14
       pricewob = 13
-        # =IF(J2="No", Prices!A2*K2, IF(J2="Yes", Prices!B2*K2, "Invalid Input"))
-      pcost = f"=IF({get_column_letter(this_col-1)}{this_row}=\"{battery_answers[0]}\", "\
-              f"{pricewob}*{ew}, "\
-              f"IF({get_column_letter(this_col-1)}{this_row}=\"{battery_answers[1]}\", "\
-              f"{pricewb}*{ew}, "\
-              f"\"Invalid Input—{battery_answers[1]} or {battery_answers[0]}\"))"
+      if max(gw_int, cbm_int) < 10:
+        if pk_details["Has Batteries"]:
+          pcost = 10 * pricewb
+        else:
+          pcost = 10 * pricewob
+      else:
+        gw = f"{get_column_letter(weight_cols[0])}{this_row}"
+        cbm = f"{get_column_letter(weight_cols[1])}{this_row}"
+        ew = f"MAX({gw},{cbm})"    # effective weight
+          # =IF(J2="No", Prices!A2*K2, IF(J2="Yes", Prices!B2*K2, "Invalid Input"))
+        pcost = f"=IF({get_column_letter(this_col-1)}{this_row}=\"{battery_answers[0]}\", "\
+                f"{pricewob}*{ew}, "\
+                f"IF({get_column_letter(this_col-1)}{this_row}=\"{battery_answers[1]}\", "\
+                f"{pricewb}*{ew}, "\
+                f"\"Invalid Input—{battery_answers[1]} or {battery_answers[0]}\"))"
       ws.cell(this_row, this_col).value = pcost
       # endregion
       inc += 1
@@ -248,7 +284,7 @@ def populate_shipment(wb, name, shipment):
 
       # formatting
     format_top(ws_pointer)
-    ws_pointer += max(inc, len(cs_info))
+    ws_pointer += max(inc, len(customer))
     df_height = 15    # default row height
     ws.row_dimensions[ws_pointer-1].height = df_height + 5
     # endregion
@@ -256,18 +292,27 @@ def populate_shipment(wb, name, shipment):
     #grades = list(data[person].values())
     #ws.append([person] + grades)
 
-    # formatting
+  # formatting
   resize_columns()
-  ws.freeze_panes = "A2"
+  ws.freeze_panes = "A1"
   border_colour = Color(rgb="000000")
   border_style = Side(style='medium', color=border_colour)
   col = ws[get_column_letter(pk_headings_start)]
+  
   for c in col:
-    c.border = Border(left=border_style)
+    # need to specify that top remains unchanged
+    # otherwise top border will be missing from Packages column
+    c.border = Border(top=c.border.top, left=border_style)
+  
 
-
-def write_to_sheet(name, shipment):
+def write_to_sheet(name, data, file_path=""):
   overwrite = True
   wb = initialize_workbook(name, overwrite)
-  populate_shipment(wb, name, shipment)
-  save_data(wb, name, overwrite)
+  populate_shipment(wb, data)
+
+  if file_path == "":
+    module_directory = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(module_directory, "temp_files", name)
+
+  save_data(wb, name, file_path, overwrite)    # this determines which file_path to save to
+  return file_path
