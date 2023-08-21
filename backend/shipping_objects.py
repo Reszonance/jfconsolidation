@@ -519,7 +519,6 @@ class CustomerOrder:
     
     def assign_shipment(self, shipment_inst):
         if self.shipment != -1:
-            # TODO: update remove_order to remove packages too
             # remove self from customer list in shipment
             self.shipment.remove_from_shipment(self)
         self.shipment = shipment_inst
@@ -719,6 +718,15 @@ class Shipment:
     @property
     def volumetric_weight(self):
         return round(sum(pk.cbm for pk in self.packages), 2)
+    
+    def get_order(self, order_id):
+        """
+        Fetches CustomerOrder object matching order_id.
+        """
+        for o in self.orders:
+            if o.id == order_id:
+                return o
+        raise ValueError(f"Order ID {order_id} not found.")
 
     # packages must belong to a customer
     # THERE SHOULD BE NO DUPLICATE IDS
@@ -808,6 +816,11 @@ class Shipment:
             customer_order = item
             self.orders.remove(customer_order)
             customer_order.id = -1
+
+            i = 1
+            for o in self.orders:
+                o.id = i
+                i += 1
             for pk in customer_order.packages:
                 self.packages.remove(pk)    # removes from shipment
                 pk.consolidated = (False, None)  # setter removes pk from consolidated list
@@ -817,6 +830,8 @@ class Shipment:
     def add_shipping_order(self, customer_order):
         self.orders.append(customer_order)
         customer_order.id = len(self.orders)
+        print(f'assigned customer order ID while adding to shipment: {customer_order.id}')
+
         for pk in customer_order.packages:
             self.packages.append(pk)
             pk.package_id = len(self.packages)
@@ -1125,6 +1140,8 @@ class SaveData:
             customer_order2.assign_shipment(shipment)
 
             customers.extend([customer1, customer2])
+            customer_order1.id = 1
+            customer_order2.id = 2
 
         session = Session(shipments=shipments, customers=customers)
         session.active_shipment = shipments[0]  # change once active shipment can be selected from homepage

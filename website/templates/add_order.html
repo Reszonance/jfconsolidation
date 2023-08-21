@@ -9,26 +9,39 @@
 {% block content %}
 <h1 align="center">New Order</h1>
 <br />
-<br />
 
-<!-- failsafe for post request, fix later -->
-<!-- data should be sent via views.py -->
+<form action="{{ url_for('views.add_order') }}" method="POST">
+  <h2>Form Responses</h2>
+  <button type="submit" class="btn btn-primary" name="action" value="form_autofill">Add From Form</button>
+  <!--How many items are showing-->
+  <!--Passed to endpoint for consistency-->
+  <input type="hidden" id="data-length" name="data_length" value="{{ form_data.items() | length }}">
+
+  <div id="scroll-container" class="scrollable-container">
+    <div id="data-container">
+      {% for timestamp, response in form_data.items() %}
+      <div class="response-item">
+        <input type="radio" name="selected-response" 
+          id="response-{{ timestamp }}" 
+          value="{{ timestamp }}"
+        >
+        <label for="response-{{ timestamp }}">
+          <p><a href="{{ response['response_link'] }}">{{ timestamp }}:</a> {{ response['shipper']['shipper_name'] }}—{{ response['shipper']['shipper_email'] }}</p>
+        </label>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</form>
 
 
 <form action="{{ url_for('views.add_order') }}" method="POST">
-
-  <div class="search-table">
-    <label for="customer-search">Search Customer</label>
-    <input type="text" id="search_text" name="search_text" class="form-control" placeholder="Search for Customer">
-    <div id="customer-results"></div>
-  </div>
   <h2>Shipper</h2>
   <!-- #region shipper -->
   <div class="form-section">
     <label for="shipper-name">Name *</label>
     <input type="text" id="shipper-name" name="shipper-name" value="{{data['shipper_name']}}" required>
   </div>
-  <h2>{{data['shipper_name']}}</h2>
   <div class="form-section">
     <label for="shipper-address">Address *</label>
     <textarea id="shipper-address" name="shipper-address" required>{{data['shipper_address']}}</textarea>
@@ -106,7 +119,7 @@
       <div class="form-check">
         <input class="form-check-input" type="radio" name="office-drop-off" 
         id="option-delivery" value="delivery" 
-        {% if not data['office_dropoff'] and data['office_dropoff'] != ""%}checked{% endif %}
+        {% if data['office_dropoff'] == False and data['office_dropoff'] != ""%}checked{% endif %}
         required
         >
         <label class="form-check-label" for="option-delivery">Delivery to our office (Extra charge)</label>
@@ -148,7 +161,7 @@
   <div class="form-section">
     <label for="insurance"><strong>Would you like insurance?</strong></label>
     <input type="checkbox" id="insurance" name="insurance" 
-      {% if data['insurance'] and data['insurance'] != ""%}checked{% endif %}
+      {% if data['insurance'] %}checked{% endif %}
     >
   </div>
   <!-- #endregion-->
@@ -192,12 +205,19 @@
     });
     */
     
-    function generateBoxSections() {
+    function generateBoxSections(box_data) {
       // see form_autofill.py for how data is passed and key-value pairs
       const boxCount = parseInt(document.getElementById("box-count").value);
       let boxSectionHTML = "";
+      
 
       for (let i = 1; i <= boxCount; i++) {
+        // pk_data is an empty object if box_data[i] is undefined
+        const pk_data = box_data[i.toString()] || {};
+        //console.log(pk_data);
+        //console.log(`${pk_data.hasOwnProperty('description') ? pk_data.description : 'no description'}`);
+        console.log(`${pk_data.hasOwnProperty('weight') ? pk_data.weight : ''}`)
+
         boxSectionHTML += `
           <div class="box-section">
             <h3>Box ${i}</h3>
@@ -206,31 +226,36 @@
               <div class="inline-inputs">
                 <div class="input-group">
                   <input type="text" id="length-${i}" name="length-${i}" placeholder="Length" 
-                    class="form-control small-input" value="{{data['boxes']['length']}}"
+                    class="form-control small-input"
+                    value="${pk_data.hasOwnProperty('length') ? pk_data.length : ''}"
                     required
                   >
                   <input type="text" id="width-${i}" name="width-${i}" placeholder="Width" 
-                  class="form-control small-input" value="{{data['boxes']['width']}}"
+                  class="form-control small-input"
+                  value="${pk_data.hasOwnProperty('width') ? pk_data.width : ''}"
                   required
                   >
                   <input type="text" id="height-${i}" name="height-${i}" placeholder="Height" 
-                    class="form-control small-input" value="{{data['boxes']['height']}}"
+                    class="form-control small-input"
+                    value="${pk_data.hasOwnProperty('height') ? pk_data.height : ''}"
                     required
                   >
                 </div>
                 <div class="form-check form-check-inline">
                   <input class="form-check-input" type="radio" name="units-${i}" id="inch-${i}" 
-                    value="INCH" {% if data['boxes']['units'] == 'INCH'%}checked{% endif %}
+                    value="INCH" 
+                    ${pk_data.hasOwnProperty('units') && pk_data.units === 'INCH' ? 'checked' : ''}
                     required
                   >
-                  <label class="form-check-label" for="inch">Inch</label>
+                  <label class="form-check-label" for="inch-${i}">Inch</label>
                 </div>
                 <div class="form-check form-check-inline">
                   <input class="form-check-input" type="radio" name="units-${i}" id="cm-${i}" 
-                    value="CM" {% if data['boxes']['units'] == 'CM'%}checked{% endif %}
+                    value="CM" 
+                    ${pk_data.hasOwnProperty('units') && pk_data.units === 'CM' ? 'checked' : ''}
                     required
                   >
-                  <label class="form-check-label" for="cm">CM</label>
+                  <label class="form-check-label" for="cm-${i}">CM</label>
                 </div>
               </div>
             </div>
@@ -239,7 +264,7 @@
               <label for="weight">Weight (kg):</label>
               <div class="inline-inputs">
                 <input type="text" id="weight-${i}" name="weight-${i}" placeholder="Weight" class="form-control small-input"
-                  value="{{data['boxes']['weight']}}"
+                  value="${pk_data.hasOwnProperty('weight') ? pk_data.weight : ''}""
                   required
                 >
               </div>
@@ -247,20 +272,23 @@
             
             <div class="form-section">
               <label for="box-cargo-description-${i}">Cargo Description*</label>
-              <textarea id="box-cargo-description-${i}" name="box-cargo-description-${i}" required>{{data['boxes']['description']}}</textarea>
+              <textarea id="box-cargo-description-${i}" name="box-cargo-description-${i}" required>
+                ${pk_data.hasOwnProperty('description') ? pk_data.description : ''}
+              </textarea>
             </div>
             
             <div class="form-section">
               <label for="box-lithium-batteries-${i}"><strong>This box contains lithium batteries: </strong></label>
               <input type="checkbox" id="box-lithium-batteries-${i}" name="box-lithium-batteries-${i}"
                 {% if data['boxes']['batteries']%}checked{% endif %}
+                ${pk_data.hasOwnProperty('batteries') && pk_data.batteries ? 'checked' : ''}
               >
               <p>Lithium batteries can be found in laptops, phones, and any rechargeable device.</p>
             </div>
             <div class="form-section">
               <label for="box-fragile-${i}"><strong>This package is fragile:</strong></label>
               <input type="checkbox" id="box-fragile-${i}" name="box-fragile-${i}"
-              {% if data['boxes']['fragile']%}checked{% endif %}
+              ${pk_data.hasOwnProperty('fragile') && pk_data.fragile ? 'checked' : ''}
               >
             </div>
           </div>
@@ -268,7 +296,17 @@
       }
       document.getElementById("box-information-section").innerHTML = boxSectionHTML;
     }
-    document.getElementById("box-count").addEventListener("change", generateBoxSections);
+
+
+    //document.getElementById("box-count").addEventListener("change", generateBoxSections);
+    var box_data = {{ data['boxes'] | tojson | safe }};
+    console.log(box_data);
+    generateBoxSections(box_data);
+
+    document.getElementById("box-count").addEventListener("change", () => {
+        generateBoxSections(box_data);
+    });
+    
 
     function update_pickup_address_field() {
       const dropOffOption = document.getElementById("option-drop-off");

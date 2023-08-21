@@ -7,7 +7,8 @@ from . import db, form_autofill
 import json, os
 
 from backend.shipping_objects import *
-debugging = False
+
+debugging = True
 saver = SaveData()
 session = saver.load_data(debugging=debugging)
 shipment = session.active_shipment
@@ -114,10 +115,11 @@ def pk_details(pk_id):
     if request.method == 'POST':
         form_data = request.form
             # ASSUMES THAT SHIPPER == CUSTOMER
-        if form_data['save_btn'] == 'shipper-info':
-            form_autofill.assign_customer_info(package.customer, form_data)
-        elif form_data['save_btn'] == 'consignee-info':
-            form_autofill.assign_consignee_info(package.consignee, form_data)
+        # user edits shipper from view order page
+        #if form_data['save_btn'] == 'shipper-info':
+        #    form_autofill.assign_customer_info(package.customer, form_data)
+        if form_data['save_btn'] == 'consignee-info':
+            form_autofill.assign_consignee_info(form_data, consignee=package.consignee)
         elif form_data['save_btn'] == 'additional-info':
             form_autofill.assign_package_info(package, form_data)
             saver.save_data(session)
@@ -125,24 +127,43 @@ def pk_details(pk_id):
         else:
             raise ValueError("Do not recognize save button value, check pk_details.html")
 
-    cons_packages = []
+    cons_packages = None
     if isinstance(package, ConsolidatedPackage):
+        cons_packages = []
         for pk in package.packages:
             cons_packages.append(pk)
 
     return render_template('pk_details.html', pk=package, cons_packages=cons_packages)
 
+@views.route('/add-package', methods=['GET', 'POST'])
+def add_package():
+    print(f'-------------request args: {request.args}')
+    order_id = request.args['order_id']
+    order = shipment.get_order(order_id)
+
+    if request.method == 'POST':
+        form_data = request.form
+        print(f'adding package with data: {form_data}')
+        
+        consignee = Consignee("", "", "", "", "", "", "")
+        form_autofill.assign_consignee_info(form_data, consignee=consignee)
+        pk = Package(("", "", ""), "INCH", "", order, order.customer, consignee, "", "")
+        form_autofill.assign_package_info(pk, form_data)
+        
+        return redirect(url_for('views.view_order', order_id=order.id))
+    else:
+        consignee = None
+        if len(order.packages) > 0:
+            consignee = order.packages[len(order.packages)-1].consignee
+        data = form_autofill.get_autofill_dict(order=order, consignee=consignee)
+
+        return render_template('add_package.html', order=order, data=data, consignee=consignee)
+    
+
 @views.route('/view-order', methods=['GET', 'POST'])
 def view_order():
-    #print(f'order_id: {request.args["order_id"]}')
     order_id = request.args['order_id']
-    order = None
-    for o in shipment.orders:
-        if o.id == order_id:
-            order = o
-            break
-    else:
-        raise ValueError(f"Order ID {order_id} not found.")
+    order = shipment.get_order(order_id)
     
     if request.method == 'POST':
         form_data = request.form
@@ -153,6 +174,7 @@ def view_order():
         elif form_data['save_btn'] == 'delete-order':
             print('deleting order')
             shipment.remove_from_shipment(order)
+
             return render_template("home.html", shipment=shipment, package_num=shipment.package_num)
         
     data = form_autofill.get_autofill_dict(order=order)
@@ -172,88 +194,101 @@ def add_order():
         # delivery address == consignee address
         # fragile option doesn't do anything; need to add to shipping_objects
         if action == 'add':
-            # assumes shipper = customer
-            customer = Customer(
-                name=form_data['shipper-name'], 
-                address=form_data['shipper-address'], 
-                city=form_data['shipper-city'], 
-                state=form_data['shipper-state'], 
-                zip_code=form_data['shipper-zip'], 
-                phone=form_data['shipper-phone'], 
-                email=form_data['shipper-email'])
-            shipper = Shipper(
-                name=form_data['shipper-name'], 
-                address=form_data['shipper-address'], 
-                city=form_data['shipper-city'], 
-                state=form_data['shipper-state'], 
-                zip_code=form_data['shipper-zip'], 
-                phone=form_data['shipper-phone'], 
-                email=form_data['shipper-email'])
-            consignee = Consignee(
-                name=form_data['consignee-name'], 
-                address=form_data['consignee-address'], 
-                city=form_data['consignee-city'], 
-                state=form_data['consignee-state'], 
-                zip_code=form_data['consignee-zip'], # returns blank string if nothing there
-                phone=form_data['consignee-phone'], 
-                email=form_data['consignee-email'])
-            
-            pickup_address = None
-            if form_data.get('office-drop-off') == 'drop-off':
-                office_dropoff = True
-            else:
-                office_dropoff = False
-                pickup_address = form_data.get('pickup-address')
-            # delivery address is consignee address by default
-            office_pickup = form_data.get('office-pickup') == 'pick-up'
-            insurance = form_data.get('insurance') == 'on' 
-            order = CustomerOrder(customer, "", office_dropoff, office_pickup, insurance)
-            order.pickup_address = pickup_address
-            order.assign_shipment(shipment)
-
-            # region BOXES
             box_num = form_data.get('box-count')
-            if box_num is None or int(box_num) == 0:
+            if int(box_num) < 1 or box_num is None:
                 error_message = "Please enter a valid number of boxes (greater than 0)."
-                print("-------------------Please enter a valid number of boxes (greater than 0).")
-                # FIXME error message does not work
-                # do error checking from within the template instead of here
-                # caused an error where site was redirecting to add order page upon submit
-                # without knowing why
-                return render_template('add_order.html', error=error_message)
-            
-            box_num = int(box_num)
-            for i in range(1, box_num+1):
-                dim = (float(form_data.get(f'length-{i}')),
-                       float(form_data.get(f'width-{i}')),
-                       float(form_data.get(f'height-{i}')))
-                units = form_data.get(f'units-{i}')
-                weight = form_data[f'weight-{i}']
-                weight = float(''.join(filter(lambda char: char.isdigit() or char == '.', weight)))
-                print(f'------WEIGHT: {weight}')
+                flash(error_message, category='error')
+            else:
+                # assumes shipper = customer
+                customer = Customer(
+                    name=form_data['shipper-name'], 
+                    address=form_data['shipper-address'], 
+                    city=form_data['shipper-city'], 
+                    state=form_data['shipper-state'], 
+                    zip_code=form_data['shipper-zip'], 
+                    phone=form_data['shipper-phone'], 
+                    email=form_data['shipper-email'])
+                shipper = Shipper(
+                    name=form_data['shipper-name'], 
+                    address=form_data['shipper-address'], 
+                    city=form_data['shipper-city'], 
+                    state=form_data['shipper-state'], 
+                    zip_code=form_data['shipper-zip'], 
+                    phone=form_data['shipper-phone'], 
+                    email=form_data['shipper-email'])
+                consignee = Consignee(
+                    name=form_data['consignee-name'], 
+                    address=form_data['consignee-address'], 
+                    city=form_data['consignee-city'], 
+                    state=form_data['consignee-state'], 
+                    zip_code=form_data['consignee-zip'], # returns blank string if nothing there
+                    phone=form_data['consignee-phone'], 
+                    email=form_data['consignee-email'])
+                
+                pickup_address = None
+                if form_data.get('office-drop-off') == 'drop-off':
+                    office_dropoff = True
+                else:
+                    office_dropoff = False
+                    pickup_address = form_data.get('pickup-address')
+                # delivery address is consignee address by default
+                office_pickup = form_data.get('office-pickup') == 'pick-up'
+                insurance = form_data.get('insurance') == 'on' 
+                order = CustomerOrder(customer, "", office_dropoff, office_pickup, insurance)
+                order.pickup_address = pickup_address
+                order.assign_shipment(shipment)
 
-                desc = form_data[f'box-cargo-description-{i}']
-                batteries = form_data.get(f'box-lithium-batteries-{i}') == 'on' 
-                fragile = form_data.get(f'box-fragile-{i}') == 'on'
-                pk = Package(dim, units, weight, order, shipper, consignee, desc, batteries)
-                print(f"----------UNITS {units}")
-            # endregion
-            """
-            {% if not data %}
-                {% set data = {'boxes':{}} %}
-            {% endif %}
-            """
-            print(f'-----------------ORDER ADDED TO SHIPMENT: {order.customer.name}')
-            flash('Order added', category='success')
-            
-            saver.save_data(session)
-            return redirect(url_for('views.home'))
+                # region BOXES
+                box_num = int(form_data.get('box-count'))
+                for i in range(1, box_num+1):
+                    dim = (float(form_data.get(f'length-{i}')),
+                        float(form_data.get(f'width-{i}')),
+                        float(form_data.get(f'height-{i}')))
+                    units = form_data.get(f'units-{i}')
+                    weight = form_data[f'weight-{i}']
+                    weight = float(''.join(filter(lambda char: char.isdigit() or char == '.', weight)))
+                    print(f'------WEIGHT: {weight}')
+
+                    desc = form_data[f'box-cargo-description-{i}']
+                    batteries = form_data.get(f'box-lithium-batteries-{i}') == 'on' 
+                    fragile = form_data.get(f'box-fragile-{i}') == 'on'
+                    pk = Package(dim, units, weight, order, shipper, consignee, desc, batteries)
+                    print(f"----------UNITS {units}")
+                # endregion
+                """
+                {% if not data %}
+                    {% set data = {'boxes':{}} %}
+                {% endif %}
+                """
+                print(f'-----------------ORDER ADDED TO SHIPMENT: {order.customer.name}')
+                flash('Order added', category='success')
+                
+                saver.save_data(session)
+                return redirect(url_for('views.home'))
         elif action == 'cancel':
             return redirect(url_for('views.home'))
+        elif action == 'form_autofill':
+            # this is the key of the relevant response in form_data
+            # as defined in google_form_autofill
+            # is a timestamp of when the response was submitted
+            response_timestamp = form_data.get('selected-response')
+            if response_timestamp is None or response_timestamp == "":
+                error_message = 'Please choose a form response.'
+                flash(error_message, category='error')
+                #return render_template('add_order.html', data=data, form_data=form_data, error=error_message)
+            else:
+                data_length = int(request.form.get('data_length'))
+                visible_responses = form_autofill.fetch_responses(rows=data_length)
+                response = visible_responses[response_timestamp]
+                data = form_autofill.autofill_from_form(response)
+                form_data = form_autofill.fetch_responses()
+                print(data)
+                return render_template('add_order.html', data=data, form_data=form_data)
 
-    data = form_autofill.get_autofill_dict(debugging=debugging)
-    
-    return render_template('add_order.html', data=data)
+    #data = form_autofill.get_autofill_dict(debugging=debugging)
+    data = form_autofill.test_autofill()
+    form_data = form_autofill.fetch_responses()
+    return render_template('add_order.html', data=data, form_data=form_data)
 
 @views.route("/ajaxlivesearch", methods=['POST', 'GET'])
 def ajaxlivesearch():

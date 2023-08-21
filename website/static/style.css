@@ -186,6 +186,20 @@
 /* view_order */
 
 /* add_order? */
+.scrollable-container {
+  height: 200px; /* Set the desired height */
+  overflow-y: scroll; /* Enable vertical scrolling */
+}
+
+.response-item {
+  display: flex;
+  align-items: center;
+}
+
+.response-item input[type="radio"] {
+  margin-right: 10px; /* Adjust the spacing as needed */
+}
+
 .form-section {
   margin-bottom: 20px;
 }

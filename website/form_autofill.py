@@ -1,8 +1,6 @@
+from forms_api import google_forms_autofill as forms
 """
 For autofilling. Assumes IDs of html elements remain the same.
-
-
-
 """
 
 def assign_customer_info(customer, data):
@@ -28,20 +26,21 @@ def assign_customer_info(customer, data):
     customer.zip_code = data['shipper_zip']
     return customer
 
-def assign_consignee_info(consignee, data):
+def assign_consignee_info(data, consignee=None):
     """
     Updates consignee information from a form request (data).
     Assumes name attributes of the input fields.
 
     Parameters:
     ----------
-    consignee: Consignee
     data: form data sent as dict
+    consignee: Consignee
 
     Returns
     ----------
     consignee
     """
+    print(f'data: {data}')
     consignee.name = data['consignee_name']
     consignee.email = data['consignee_email']
     consignee.phone = data['consignee_phone']
@@ -49,6 +48,7 @@ def assign_consignee_info(consignee, data):
     consignee.city = data['consignee_city']
     consignee.state = data['consignee_state']
     consignee.zip_code = data['consignee_zip']
+
     return consignee
 
 def update_order_details(order, data):
@@ -101,26 +101,55 @@ def assign_package_info(package, data):
         height=float(data['height'])
     )
     package.dim_units = data['units']
-    package.weight = float(data['weight'])
+    package.weight = float(''.join(filter(lambda char: char.isdigit() or char == '.', data['weight'])))
     package.description = data['package_description']
     return package
 
+def autofill_from_form(form_data):
+    # autofills ONE (1) order
+    # keys defined in get_response_data from
+    # google_forms_autofill
+    # input is from google_forms_autofill.get_response_data(rows)
+    data = {}
+    #print(f'appending data from these dicts: ')
+    #print(form_data)
+    data.update(form_data["shipper"])
+    data.update(form_data["consignee"])
+    data.update(form_data["order_details"])
+    return data
 
-def get_autofill_dict(customer=None, consignee=None, order=None, debugging=False, no_data=False):
+def fetch_responses(rows=20):
+   """
+   Fetch responses to display for add_order.html.
+   """
+   form_data = forms.get_response_data(rows=rows)
+   return form_data
+
+def test_autofill():
+   form_data = forms.get_response_data(rows=2)
+   keys = list(form_data.keys())
+   response = form_data[keys[1]]
+   data = autofill_from_form(response)
+   print(f'----------autofill data: \n{data}')
+   return data
+
+
+def get_autofill_dict(customer=None, consignee=None, order=None, debugging=False):
     """
     Returns data (dict) for the HTML template to use.
-    order cannot be None if no_data and debugging is false.
-    debugging and no_data autofill the data with preset
-    values (testing and blank values respectively).
+    If order is None and debugging is false, returns blank dict.
+    debugging autofills the data with fake testing values.
 
     Parameters:
     ----------
-    package: Package
-    data: form data sent as dict
+    customer: Customer
+    consignee: Consignee
+    order: CustomerOrder
+    debugging: bool
 
     Returns
     ----------
-    package
+    data: dict
     """
     if debugging:
       autofill_dict = {
@@ -199,7 +228,6 @@ def get_autofill_dict(customer=None, consignee=None, order=None, debugging=False
       }
       return blank_dict
     
-       #raise AssertionError("Order cannot be None for autofill data.")
     data = {}
     data_list = []
 
@@ -223,9 +251,19 @@ def get_autofill_dict(customer=None, consignee=None, order=None, debugging=False
           'consignee_state': consignee.state,
           'consignee_zip': consignee.zip_code,
           'consignee_phone': consignee.phone,
-          'consignee_email': consignee.email,
+          'consignee_email': consignee.email
       }
-      data_list.append(consignee_dict)
+    else:
+      consignee_dict = {
+          'consignee_name': None,
+          'consignee_address': None,
+          'consignee_city': None,
+          'consignee_state': None,
+          'consignee_zip': None,
+          'consignee_phone': None,
+          'consignee_email': None
+      }
+    data_list.append(consignee_dict)
 
     order_dict = {
         'office_dropoff': order.delivery_option[0],

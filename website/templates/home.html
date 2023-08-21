@@ -121,7 +121,10 @@
         <a href="{{ url_for('views.view_order', order_id=order.id) }}">
           {{ order.customer.name }}
         </a>
-        <span class="description">{{" — " ~ order.packages|length ~ " packages" }}</span>
+        <span class="description">{{" — " ~ order.packages|length ~ " packages" }}    (order id: {{ order.id }})</span>
+      </div>
+      <div class="actions">
+        <a href="{{ url_for('views.add_package', order_id=order.id) }}" class="btn btn-link">Add Package</a>
       </div>
       <br>
       <ul class="list-group list-group-flush" id="packages">

@@ -12,7 +12,7 @@
 <br />
 <!--- #region list orders -->
 <ul class="list-group list-group-flush" id="notes">
-  {% if cons_pk|length == 0 %}
+  {% if cons_pk is not none and cons_pk|length == 0 %}
   <p>No boxes stored here. Recommend deleting this consolidated package from Homepage.</p>
   {% endif %}
   {% for cons_pk in cons_packages %}
@@ -79,7 +79,7 @@
     </form>
   </div>
   <div class="form-section">
-    <h3>Additional Details</h3>
+    <h3>Package Details</h3>
     <form class="edit-form" id="additional-details-form" method="POST" action="{{ url_for('views.pk_details', pk_id=pk.package_id) }}">
       <div class="form-section">
         <label for="dimensions">Dimensions:</label>
