@@ -14,30 +14,31 @@
 <ul class="list-group list-group-flush" id="notes">
   {% if cons_pk is not none and cons_pk|length == 0 %}
   <p>No boxes stored here. Recommend deleting this consolidated package from Homepage.</p>
-  {% endif %}
-  {% for cons_pk in cons_packages %}
-  <li class="list-group-item">
-    <div class="order-info">
-      <a href="{{ url_for('views.pk_details', pk_id=cons_pk.package_id) }}">
-        {{"Box " ~ cons_pk.package_id}}
-      </a>
-      <span class="description">{{"— " ~ cons_pk.shipper.name}}</span>
-    </div>
-    <div class="actions">
-      <a href="{{ url_for('views.pk_details', pk_id=cons_pk.package_id) }}" class="btn btn-link">Edit</a>
-      <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('view-{{ cons_pk.package_id }}')">View</a>
-      <a href="javascript:void(0);" class="btn btn-link" onClick="delete_package('{{cons_pk.package_id}}', 'from_box')">Remove from Box</a>
-      <a href="javascript:void(0);" onClick="delete_package('{{cons_pk.package_id}}', 'permanent')">Delete Permanently</a>
-    </div>
-    <div id="view-{{ cons_pk.package_id }}" class="view-form" style="display: none;">
-      <p>Description: {{ cons_pk.description }}</p>
-      <p>Has Batteries: {{ cons_pk.has_batteries }}</p>
-      <p>Is Fragile: {{ cons_pk.fragile }}</p>
-      <p>Dimensions ({{cons_pk.dim_units}}): {{ cons_pk.dimensions }}</p>
-      <p>Weight (kg): {{ cons_pk.weight }}</p>
-    </div>
-  </li>
+  {% else %}
+    {% for cons_pk in cons_packages %}
+    <li class="list-group-item">
+      <div class="order-info">
+        <a href="{{ url_for('views.pk_details', pk_id=cons_pk.package_id) }}">
+          {{"Box " ~ cons_pk.package_id}}
+        </a>
+        <span class="description">{{"— " ~ cons_pk.shipper.name}}</span>
+      </div>
+      <div class="actions">
+        <a href="{{ url_for('views.pk_details', pk_id=cons_pk.package_id) }}" class="btn btn-link">Edit</a>
+        <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('view-{{ cons_pk.package_id }}')">View</a>
+        <a href="javascript:void(0);" class="btn btn-link" onClick="delete_package('{{cons_pk.package_id}}', 'from_box')">Remove from Box</a>
+        <a href="javascript:void(0);" onClick="delete_package('{{cons_pk.package_id}}', 'permanent')">Delete Permanently</a>
+      </div>
+      <div id="view-{{ cons_pk.package_id }}" class="view-form" style="display: none;">
+        <p>Description: {{ cons_pk.description }}</p>
+        <p>Has Batteries: {{ cons_pk.has_batteries }}</p>
+        <p>Is Fragile: {{ cons_pk.fragile }}</p>
+        <p>Dimensions ({{cons_pk.dim_units}}): {{ cons_pk.dimensions }}</p>
+        <p>Weight (kg): {{ cons_pk.weight }}</p>
+      </div>
+    </li>
   {% endfor %}
+  {% endif %}
   <div class="form-section">
     <h3>Shipper/Customer</h3>
     <p>Name: {{pk.customer.name}}</p>
