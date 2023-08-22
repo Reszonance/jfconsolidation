@@ -1,0 +1,110 @@
+<!-- extend base template-->
+{% extends "base.html" %} {% block title %}Add Package{% endblock %}
+
+{% block style %}
+<!-- aligns text boxes -->
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% endblock %}
+
+{% block content %}
+<h1 align="center">Add Package for {{order.customer.name}}</h1>
+<br />
+<br />
+<!--- #region list orders -->
+<ul class="list-group list-group-flush" id="notes">
+  <form class="edit-form" id="consignee-form" method="POST" action="{{ url_for('views.add_package', order_id=order.id) }}">
+  <div class="form-section">
+    <h3>Consignee</h3>
+      <div class="form-group">
+        <label for="consignee-name">Name:</label>
+        <input type="text" class="form-control" id="consignee-name" name="consignee_name" value="{{data['consignee_name']}}">
+      </div>
+      <div class="form-group">
+        <label for="consignee-email">Email:</label>
+        <input type="text" class="form-control" id="consignee-email" name="consignee_email" value="{{data['consignee_email']}}">
+      </div>
+      <div class="form-group">
+        <label for="consignee-phone">Phone Number:</label>
+        <input type="text" class="form-control" id="consignee-phone" name="consignee_phone" value="{{data['consignee_phone']}}">
+      </div>
+      <div class="form-group">
+        <label for="consignee-address">Address:</label>
+        <input type="text" class="form-control" id="consignee-address" name="consignee_address" value="{{data['consignee_address']}}">
+      </div>
+      <div class="form-group">
+        <label for="consignee-city">City:</label>
+        <input type="text" class="form-control" id="consignee-city" name="consignee_city" value="{{data['consignee_city']}}">
+      </div>
+      <div class="form-group">
+        <label for="consignee-name">State/Province:</label>
+        <input type="text" class="form-control" id="consignee-state" name="consignee_state" value="{{data['consignee_state']}}">
+      </div>
+      <div class="form-group">
+        <label for="consignee-name">Zip Code:</label>
+        <input type="text" class="form-control" id="consignee-zip" name="consignee_zip" value="{{data['consignee_zip_code']}}">
+      </div>
+  </div>
+  <div class="form-section">
+    <h3>Package Details</h3>
+      <div class="form-section">
+        <label for="dimensions">Dimensions:</label>
+        <div class="inline-inputs">
+          <div class="input-group">
+            <input type="text" id="length" name="length" placeholder="Length" 
+              class="form-control small-input" required
+            >
+            <input type="text" id="width" name="width" placeholder="Width" 
+             class="form-control small-input" required
+            >
+            <input type="text" id="height" name="height" placeholder="Height" 
+              class="form-control small-input" required
+            >
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="units" id="inch" 
+              value="INCH" required
+            >
+            <label class="form-check-label" for="inch">Inches</label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="units" id="cm" 
+              value="CM" required
+            >
+            <label class="form-check-label" for="cm">CM</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label for="weight">Weight:</label>
+        <div class="inline-inputs">
+          <input type="text" id="weight" name="weight" placeholder="Weight" class="form-control small-input"
+          required
+          >
+        </div>
+      </div>
+      
+      <div class="form-section">
+        <label for="box-cargo-description">Cargo Description</label>
+        <textarea id="box-cargo-description" name="package_description" required></textarea>
+      </div>
+      
+      <div class="form-section">
+        <label for="box-lithium-batteries"><strong>This box contains lithium batteries: </strong></label>
+        <input type="checkbox" id="box-lithium-batteries" name="lithium_batteries"
+        >
+        <p>Lithium batteries can be found in laptops, phones, and any rechargeable device.</p>
+      </div>
+      <div class="form-section">
+        <label for="box-fragile"><strong>This package is fragile:</strong></label>
+        <input type="checkbox" id="box-fragile" name="is_fragile"
+        >
+      </div>
+    </div>
+    <button type="submit" name="save_btn" class="save-btn" value="additional-info">Save</button>
+  </div>
+  </form>
+</ul>
+
+<!-- #endregion -->
+{% endblock %}
