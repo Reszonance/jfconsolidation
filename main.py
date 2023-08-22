@@ -11,6 +11,6 @@ if __name__ == '__main__':
     
 else:
     gunicorn_app = create_app()
-    port = int(os.getenv("PORT", 10000))
-    from gunicorn.app.wsgiapp import WSGIApplication
-    WSGIApplication("%(prog)s [OPTIONS] [APP_MODULE]").run()
+    #port = int(os.getenv("PORT", 10000))
+    #from gunicorn.app.wsgiapp import WSGIApplication
+    #WSGIApplication("%(prog)s [OPTIONS] [APP_MODULE]").run()
