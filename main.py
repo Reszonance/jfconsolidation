@@ -1,5 +1,4 @@
-# website is a python package
-# when you put an __init__.py inside a folder it becomes a python package
+import os
 from website import create_app
 
 app = create_app()
@@ -11,3 +10,6 @@ if __name__ == '__main__':
     app.run(debug=True)
 else:
     gunicorn_app = create_app()
+    port = int(os.environ.get("PORT", 10000))
+    from gunicorn.app.wsgiapp import WSGIApplication
+    WSGIApplication("%(prog)s [OPTIONS] [APP_MODULE]").run()
