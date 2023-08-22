@@ -174,7 +174,7 @@ def view_order():
         elif form_data['save_btn'] == 'delete-order':
             print('deleting order')
             shipment.remove_from_shipment(order)
-
+            flash('Order removed', category='success')
             return render_template("home.html", shipment=shipment, package_num=shipment.package_num)
         
     data = form_autofill.get_autofill_dict(order=order)
@@ -234,9 +234,12 @@ def add_order():
                 # delivery address is consignee address by default
                 office_pickup = form_data.get('office-pickup') == 'pick-up'
                 insurance = form_data.get('insurance') == 'on' 
-                order = CustomerOrder(customer, "", office_dropoff, office_pickup, insurance)
+                notes = form_data.get('order-notes')
+                print(f'notes: {notes}')
+                order = CustomerOrder(customer, "", office_dropoff, office_pickup, insurance, notes=notes)
                 order.pickup_address = pickup_address
                 order.assign_shipment(shipment)
+                print(f'----------NOTES: {order.notes}')
 
                 # region BOXES
                 box_num = int(form_data.get('box-count'))
@@ -253,7 +256,6 @@ def add_order():
                     batteries = form_data.get(f'box-lithium-batteries-{i}') == 'on' 
                     fragile = form_data.get(f'box-fragile-{i}') == 'on'
                     pk = Package(dim, units, weight, order, shipper, consignee, desc, batteries)
-                    print(f"----------UNITS {units}")
                 # endregion
                 """
                 {% if not data %}
@@ -283,6 +285,7 @@ def add_order():
                 data = form_autofill.autofill_from_form(response)
                 form_data = form_autofill.fetch_responses()
                 print(data)
+                print(data['notes'])
                 return render_template('add_order.html', data=data, form_data=form_data)
 
     #data = form_autofill.get_autofill_dict(debugging=debugging)

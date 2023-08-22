@@ -3,6 +3,30 @@ from forms_api import google_forms_autofill as forms
 For autofilling. Assumes IDs of html elements remain the same.
 """
 
+def fill_default_box_values(data):
+   """
+   If dimensions, weight, and unit of box is undefined,
+   substitute 0 and INCH as the default value.
+   """
+   if 'boxes' in data:
+      # attributes are the dimensions, weight, units, etc.
+      # of the box
+      # see get_order_details in google_forms_autofill
+      for box, attributes in data['boxes'].items():
+        if 'length' not in attributes:
+            attributes['length'] = 0
+            print('updated length to 0')
+        if 'width' not in attributes:
+            attributes['width'] = 0
+        if 'height' not in attributes:
+            attributes['height'] = 0
+        if 'weight' not in attributes:
+            attributes['weight'] = 0
+        if 'units' not in attributes:
+           attributes['units'] = 'INCH'
+   else:
+      raise AssertionError("Key 'boxes' not found in data.")
+
 def assign_customer_info(customer, data):
     """
     Updates customer information from a form request (data).
@@ -116,6 +140,8 @@ def autofill_from_form(form_data):
     data.update(form_data["shipper"])
     data.update(form_data["consignee"])
     data.update(form_data["order_details"])
+    fill_default_box_values(data)
+    
     return data
 
 def fetch_responses(rows=20):
@@ -130,7 +156,6 @@ def test_autofill():
    keys = list(form_data.keys())
    response = form_data[keys[1]]
    data = autofill_from_form(response)
-   print(f'----------autofill data: \n{data}')
    return data
 
 

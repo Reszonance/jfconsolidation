@@ -461,7 +461,7 @@ class CustomerOrder:
         self.delivery_option = (office_dropoff, office_pickup)
         self.pickup_address = ""
         self.insurance = wants_insurance
-        self.notes = ""
+        self.notes = notes
 
         self._packages = []
         self._shipment = -1

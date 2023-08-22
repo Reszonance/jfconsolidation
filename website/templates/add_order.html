@@ -26,7 +26,7 @@
           value="{{ timestamp }}"
         >
         <label for="response-{{ timestamp }}">
-          <p><a href="{{ response['response_link'] }}">{{ timestamp }}:</a> {{ response['shipper']['shipper_name'] }}—{{ response['shipper']['shipper_email'] }}</p>
+          <p><a href="{{ response['response_link'] }}" target="_blank">{{ timestamp }}:</a> {{ response['shipper']['shipper_name'] }}—{{ response['shipper']['shipper_email'] }}</p>
         </label>
       </div>
       {% endfor %}
@@ -164,6 +164,11 @@
       {% if data['insurance'] %}checked{% endif %}
     >
   </div>
+
+  <div class="form-section">
+    <label for="order-notes">Notes</label>
+    <textarea id="order-notes" name="order-notes">{{ data['notes'] }}</textarea>
+  </div>
   <!-- #endregion-->
 
   <h2>Package Information</h2>
@@ -272,9 +277,7 @@
             
             <div class="form-section">
               <label for="box-cargo-description-${i}">Cargo Description*</label>
-              <textarea id="box-cargo-description-${i}" name="box-cargo-description-${i}" required>
-                ${pk_data.hasOwnProperty('description') ? pk_data.description : ''}
-              </textarea>
+              <textarea id="box-cargo-description-${i}" name="box-cargo-description-${i}" required>${pk_data.hasOwnProperty('description') ? pk_data.description : ''}</textarea>
             </div>
             
             <div class="form-section">
