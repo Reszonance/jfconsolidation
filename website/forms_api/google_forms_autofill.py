@@ -9,7 +9,7 @@ import pprint
 
 current_dir = os.path.dirname(__file__)
 
-CLIENT_FILE = os.path.join(current_dir, "client_secrets_web.json")
+CLIENT_FILE = os.path.join(current_dir, "client_secrets_app.json")
 SCOPES = ["https://www.googleapis.com/auth/forms.body.readonly", "https://www.googleapis.com/auth/forms", "https://www.googleapis.com/auth/forms.responses.readonly", "https://www.googleapis.com/auth/spreadsheets.readonly"]
 
 #https://www.googleapis.com/auth/gmail.send
