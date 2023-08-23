@@ -1,4 +1,4 @@
-from .forms_api import google_forms_autofill as forms
+from .forms_api import google_forms_autofill1 as forms
 """
 For autofilling. Assumes IDs of html elements remain the same.
 """
