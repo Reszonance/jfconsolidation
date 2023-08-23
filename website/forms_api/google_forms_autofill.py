@@ -13,15 +13,10 @@ CLIENT_FILE = os.path.join(current_dir, "client_secrets_web.json")
 SCOPES = ["https://www.googleapis.com/auth/forms.body.readonly", "https://www.googleapis.com/auth/forms", "https://www.googleapis.com/auth/forms.responses.readonly", "https://www.googleapis.com/auth/spreadsheets.readonly"]
 
 #https://www.googleapis.com/auth/gmail.send
-
-
-
 #key = "AIzaSyA96YVQLcj58yRcp9095qgpSaauBxFPEnY"
-
 
 def authenticate_user(creds=None):
 	token_path = os.path.join(current_dir, "token.json")
-	print(f'-------TOKEN PATH: {token_path}')
 	if os.path.exists(token_path):
 			creds = Credentials.from_authorized_user_file(token_path, SCOPES)
 		
