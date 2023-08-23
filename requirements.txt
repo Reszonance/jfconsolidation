@@ -2,6 +2,7 @@ Flask
 Flask-SQLAlchemy
 Flask-Login
 openpyxl
+pytz
 gunicorn
 google-api-core
 google-api-python-client
