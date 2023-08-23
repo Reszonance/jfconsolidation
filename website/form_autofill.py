@@ -3,6 +3,15 @@ from .forms_api import google_forms_autofill as forms
 For autofilling. Assumes IDs of html elements remain the same.
 """
 
+creds = None
+
+def get_creds():
+    global creds
+    if creds is None:
+      creds = forms.authenticate_user()
+    
+    return creds
+
 def fill_default_box_values(data):
    """
    If dimensions, weight, and unit of box is undefined,

@@ -184,6 +184,7 @@ def view_order():
 def add_order():
     global shipment
     global debugging
+    creds = form_autofill.get_creds()
     if request.method == 'POST':
         form_data = request.form
         action = form_data.get('action')
