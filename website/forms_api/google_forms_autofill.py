@@ -33,10 +33,12 @@ def authenticate_user(creds=None):
 	return creds
 
 creds = None
-creds = authenticate_user(creds=creds)
-#service_gmail = build('gmail', 'v1', credentials=creds)
 
+#service_gmail = build('gmail', 'v1', credentials=creds)
 """
+# region exclude
+creds = authenticate_user(creds=creds)
+
 service_forms = build("forms", "v1", credentials=creds)
 service_sheets = build('sheets', 'v4', credentials=creds)
 
@@ -102,8 +104,9 @@ for i, hd in enumerate(values[0]):
 			continue
 	headers[heading] = i
 
-"""
+#endregion
 
+"""
 print(f'------INITIALIZED GOOGLE FORMS SETUP')
 # keys defined below must match keys defined in form_autofill.py
 # see get_autofill_dict()
