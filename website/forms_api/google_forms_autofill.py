@@ -24,10 +24,14 @@ def authenticate_user(creds=None):
 			print(f'--------CREDS: {creds}')
 			print(f'----------CLIENT FILE: {CLIENT_FILE}')
 			if creds and creds.expired and creds.refresh_token:
+					print(f'-------REFRESH CREDS')
 					creds.refresh(Request())
 			else:
+					print(f'-------GET FLOW')
 					flow = InstalledAppFlow.from_client_secrets_file(CLIENT_FILE, SCOPES)
+					print(f'-------GOT FLOW')
 					creds = flow.run_local_server()
+					print(f'------GOT CREDS')
 			with open(token_path, 'w') as token:
 					token.write(creds.to_json())
 	return creds
