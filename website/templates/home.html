@@ -73,6 +73,12 @@
           {{"Box " ~ pk.package_id}}
         </a>
         <span class="description">{{"— " ~ pk.shipper.name}}</span>
+        {% if pk.validate() != True %}
+        <i class="fa-solid fa-circle-exclamation"
+        title="Missing the following details: {{pk.validate()}}"
+        ></i>
+        <span class="description"></span>
+        {% endif %}
       </div>
       <div class="actions">
         <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}" class="btn btn-link">Edit</a>
@@ -83,8 +89,8 @@
         <p>Description: {{ pk.description }}</p>
         <p>Has Batteries: {{ pk.has_batteries }}</p>
         <p>Is Fragile: {{ pk.fragile }}</p>
-        <p>Dimensions ({{pk.dim_units}}): {{ pk.dimensions }}</p>
-        <p>Weight (kg): {{ pk.weight }}</p>
+        <p>Dimensions: {{ pk.dimensions }} {{pk.dim_units}}</p>
+        <p>Weight: {{ pk.weight }} kg</p>
         
         <!-- these are not showing -->
         {% if pk.__class__ == 'ConsolidatedPackage' %}
@@ -144,7 +150,7 @@
           {% if pk.consolidated %}
           <strong> This box is consolidated. </strong>
           {% endif %}
-          <p>Dimensions ({{pk.dim_units}}): {{ pk.dimensions }}</p>
+          <p>Dimensions: {{ pk.dimensions }} {{pk.dim_units}}</p>
           <p>Weight (kg): {{ pk.weight }}</p>
           <p>Has Batteries: {{ pk.has_batteries }}</p>
           <p>Is Fragile: {{ pk.fragile }}</p>
@@ -183,7 +189,9 @@ function toggleChecked(item) {
   let checked = document.querySelectorAll('.checked');
   let btnText = document.querySelector('.btn-text');
 
-  if (checked.length > 1) {
+  // minimum number of boxes to consolidate is now one
+  // this way, large boxes get labelling priority
+  if (checked.length >= 1) {
     btnText.innerText = `${checked.length} boxes selected`;
     if (!saveBtn.classList.contains('consolidate')) {
       saveBtn.classList.add('consolidate');
@@ -211,11 +219,10 @@ function attachEventListeners() {
   });
 }
 
+
 function box_dropdowns() {
   var box_num = {{ shipment.package_num }};
   var box_ids = {{ shipment.package_id_list|tojson }}
-  console.log('box ids:')
-  //console.log(box_ids)
   let boxSectionHTML = "";
 
   for (let i = 0; i < box_num; i++) {

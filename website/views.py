@@ -8,7 +8,7 @@ import json, os
 
 from backend.shipping_objects import *
 
-debugging = True
+debugging = False
 saver = SaveData()
 session = saver.load_data(debugging=debugging)
 shipment = session.active_shipment
@@ -118,12 +118,15 @@ def pk_details(pk_id):
         # user edits shipper from view order page
         #if form_data['save_btn'] == 'shipper-info':
         #    form_autofill.assign_customer_info(package.customer, form_data)
+        
         if form_data['save_btn'] == 'consignee-info':
             form_autofill.assign_consignee_info(form_data, consignee=package.consignee)
         elif form_data['save_btn'] == 'additional-info':
             form_autofill.assign_package_info(package, form_data)
             saver.save_data(session)
             return redirect(url_for('views.home'))
+        elif form_data['save_btn'] == 'add-cons-package':
+            pass
         else:
             raise ValueError("Do not recognize save button value, check pk_details.html")
 
@@ -133,7 +136,7 @@ def pk_details(pk_id):
         for pk in package.packages:
             cons_packages.append(pk)
 
-    return render_template('pk_details.html', pk=package, cons_packages=cons_packages)
+    return render_template('pk_details.html', pk=package, cons_packages=cons_packages, packages=shipment.packages)
 
 @views.route('/add-package', methods=['GET', 'POST'])
 def add_package():
@@ -184,7 +187,6 @@ def view_order():
 def add_order():
     global shipment
     global debugging
-    creds = form_autofill.get_creds()
     if request.method == 'POST':
         form_data = request.form
         action = form_data.get('action')
@@ -274,24 +276,30 @@ def add_order():
             # this is the key of the relevant response in form_data
             # as defined in google_form_autofill
             # is a timestamp of when the response was submitted
-            response_timestamp = form_data.get('selected-response')
-            if response_timestamp is None or response_timestamp == "":
-                error_message = 'Please choose a form response.'
-                flash(error_message, category='error')
-                #return render_template('add_order.html', data=data, form_data=form_data, error=error_message)
-            else:
-                data_length = int(request.form.get('data_length'))
-                visible_responses = form_autofill.fetch_responses(rows=data_length)
-                response = visible_responses[response_timestamp]
-                data = form_autofill.autofill_from_form(response)
-                form_data = form_autofill.fetch_responses()
-                print(data)
-                print(data['notes'])
-                return render_template('add_order.html', data=data, form_data=form_data)
+            if form_autofill.enable_api:
+                response_timestamp = form_data.get('selected-response')
+                if response_timestamp is None or response_timestamp == "":
+                    error_message = 'Please choose a form response.'
+                    flash(error_message, category='error')
+                    #return render_template('add_order.html', data=data, form_data=form_data, error=error_message)
+                else:
+                    data_length = int(request.form.get('data_length'))
+                    visible_responses = form_autofill.fetch_responses(rows=data_length)
+                    response = visible_responses[response_timestamp]
+                    data = form_autofill.autofill_from_form(response)
+                    form_data = form_autofill.fetch_responses()
+                    print(data)
+                    print(data['notes'])
+                    return render_template('add_order.html', data=data, form_data=form_data)
 
     #data = form_autofill.get_autofill_dict(debugging=debugging)
-    data = form_autofill.test_autofill()
-    form_data = form_autofill.fetch_responses()
+    if form_autofill.enable_api:
+        data = form_autofill.test_autofill()
+        form_data = form_autofill.fetch_responses()
+    else:
+        data = form_autofill.get_autofill_dict(debugging=False)
+        form_data = None
+    
     return render_template('add_order.html', data=data, form_data=form_data)
 
 @views.route("/ajaxlivesearch", methods=['POST', 'GET'])

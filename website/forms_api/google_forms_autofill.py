@@ -1,19 +1,22 @@
 import os
+from flask import redirect, url_for, request
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from oauthlib.oauth2.rfc6749.errors import AccessDeniedError
 
 import pprint
 
 current_dir = os.path.dirname(__file__)
 
-CLIENT_FILE = os.path.join(current_dir, "client_secrets_web.json")
+CLIENT_FILE = os.path.join(current_dir, "client_secrets_app.json")
 SCOPES = ["https://www.googleapis.com/auth/forms.body.readonly", "https://www.googleapis.com/auth/forms", "https://www.googleapis.com/auth/forms.responses.readonly", "https://www.googleapis.com/auth/spreadsheets.readonly"]
 
 #https://www.googleapis.com/auth/gmail.send
 #key = "AIzaSyA96YVQLcj58yRcp9095qgpSaauBxFPEnY"
+
 
 def authenticate_user(creds=None):
 	token_path = os.path.join(current_dir, "token.json")
@@ -27,10 +30,34 @@ def authenticate_user(creds=None):
 					print(f'-------REFRESH CREDS')
 					creds.refresh(Request())
 			else:
-					print(f'-------GET FLOW')
+					print(f'-------FETCH NEW TOKEN')
 					flow = InstalledAppFlow.from_client_secrets_file(CLIENT_FILE, SCOPES)
 					print(f'-------GOT FLOW')
-					creds = flow.run_local_server()
+					
+					try:
+						"""
+						# Generate URL for request to Google's OAuth 2.0 server.
+						authorization_url, state = flow.authorization_url(
+							# Enable offline access so that you can refresh an access token without
+							# re-prompting the user for permission. Recommended for web server apps.
+							access_type='offline',
+							# Enable incremental authorization. Recommended as a best practice.
+							include_granted_scopes='true')
+						print(f'---------REDIRECT')
+						rd = redirect(authorization_url)
+						print(f'---------REDIRECTED: {rd}')
+						flow.redirect_uri = url_for('views.add_order', _external=True)
+						authorization_response = request.url
+						flow.fetch_token(authorization_response=authorization_response)
+						creds = flow.credentials
+						"""
+
+						flow.run_local_server(port=int(os.getenv("PORT", 10000)))
+						creds = flow.credentials
+					except AccessDeniedError:
+						print("Access denied by user. Try again")
+						creds = None
+						return creds
 					print(f'------GOT CREDS')
 			with open(token_path, 'w') as token:
 					token.write(creds.to_json())
@@ -39,7 +66,7 @@ def authenticate_user(creds=None):
 creds = None
 
 #service_gmail = build('gmail', 'v1', credentials=creds)
-"""
+
 # region exclude
 creds = authenticate_user(creds=creds)
 
@@ -110,12 +137,11 @@ for i, hd in enumerate(values[0]):
 
 #endregion
 
-"""
+
 print(f'------INITIALIZED GOOGLE FORMS SETUP')
 # keys defined below must match keys defined in form_autofill.py
 # see get_autofill_dict()
 
-headers = {} # remove later
 def get_shipper_info(row):
 	"""
 	row is a list

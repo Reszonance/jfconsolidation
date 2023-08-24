@@ -10,6 +10,7 @@
 <h1 align="center">New Order</h1>
 <br />
 
+{% if form_data is not none %}
 <form action="{{ url_for('views.add_order') }}" method="POST">
   <h2>Form Responses</h2>
   <button type="submit" class="btn btn-primary" name="action" value="form_autofill">Add From Form</button>
@@ -33,7 +34,7 @@
     </div>
   </div>
 </form>
-
+{% endif %}
 
 <form action="{{ url_for('views.add_order') }}" method="POST">
   <h2>Shipper</h2>

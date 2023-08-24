@@ -34,7 +34,7 @@ class Package:
         self.fragile = fragile
         self.insurance = customer_order.insurance
         self._consolidated = consolidated
-        self.cons_package = None
+        self.parent_package = None
 
         self._package_id = -1;   # fixme
         self.customer_order.add_package(self)
@@ -65,28 +65,30 @@ class Package:
     @consolidated.setter
     def consolidated(self, new_value):
         try:
-            cons, cons_package = new_value
+            cons, parent_package = new_value
         except ValueError:
             raise ValueError("Pass an iterable with two items")
         
         if cons == True:
-            self.cons_package = cons_package
+            self.parent_package = parent_package
         elif self._consolidated:
             # remove from consolidated package
             # do not add this back in
             # causes problems during loops
-            #self.cons_package.packages.remove(self)
-            self.cons_package.generate_ids()
-            self.cons_package = None
+            try:
+                self.parent_package.packages.remove(self)
+            except ValueError as e:
+                print(f"Error: package not found in consolidated package list when trying to remove—{e}")
+            self.parent_package.generate_ids()
+            self.parent_package = None
         self._consolidated = cons
-        return cons_package
-
+        return parent_package
 
     @property
     def dimensions(self):
         return self._dimensions
     
-    @property 
+    @property
     def dim_units(self):
         return self._dim_units
     
@@ -172,6 +174,32 @@ class Package:
     def consignee(self):
         return self._consignee
     
+    def validate(self):
+        """
+        Check if dimensions and weight are all filled in.
+        If any of the dimensions or weight is 0,
+        return a list of missing details.
+        Otherwise, return True
+        """
+        # might make dimensions a dict instead
+        missing = []
+        dim = self.dimensions
+        for i, d in enumerate(dim):
+            if d == 0:
+                if i == 0:
+                    missing.append("length")
+                elif i == 1:
+                    missing.append("width")
+                elif i == 2:
+                    missing.append("height")
+        if self.weight == 0:
+            missing.append("weight")
+        
+        if len(missing) > 0:
+            return missing
+        return True
+
+    
     def get_dict(self):
         # returns a dict representation of package attributes
         # for writing to excel sheet
@@ -217,9 +245,9 @@ class ConsolidatedPackage(Package):
 
     def __init__(self, dimensions, dim_units, customer_order, description='default', package_list=[]):
 
-        print(f'--------NEW CONSOLIDATED PACKAGE for {customer_order.customer.name}')
-        if len(package_list) < 2:
-            raise ValueError("ConsolidatedPackage must have at least 2 packages.")
+        print(f'--------NEW CONSOLIDATED PACKAGE for {customer_order.customer.name} VIA CONSOLIDATED PACKAGE INIT')
+        #if len(package_list) < 2:
+        #    raise ValueError("ConsolidatedPackage must have at least 2 packages.")
 
         shipment = customer_order.shipment
         self.customer_order = customer_order
@@ -228,7 +256,7 @@ class ConsolidatedPackage(Package):
 
         self.packages = []  # package_list items are added via add_packages()
         self._consolidated = False
-        self.cons_package = None
+        self.parent_package = None
         self._dimensions = -1
         self.set_dimensions(new_dimensions=dimensions)
         self.weight = 0
@@ -327,16 +355,18 @@ class ConsolidatedPackage(Package):
 
             # add to shipment before setting consolidated = False
             # otherwise it won't work (by design)
+            print(f'---------PACKAGE REMOVAL BEFORE:')
             print(f'adding back to shipment: {pk}')
             #self.shipment.add_to_shipment(pk)
             print(f'is consolidated: {pk.consolidated}')
-            print(f'cons package: {pk.cons_package}')
+            print(f'parent package: {pk.parent_package}')
             self.shipment.packages.append(pk)
             pk.package_id = len(self.shipment.packages)
+            pk.consolidated = (False, None)
+            print(f'---------PACKAGE REMOVAL AFTER:')
             print(f'added back to shipment: {pk}')
             print(f'packages: {packages}')
             print(f'i: {i}')
-            pk.consolidated = (False, None)
             #self.packages.remove(pk)
             self.weight -= pk.weight
             
@@ -841,20 +871,18 @@ class Shipment:
     # takes a list of package IDs
     def consolidate(self, dimensions: iter, packages, description: str="default"):
 
-        if len(packages) < 2:
-            print('Need at least 2 packages to consolidate')
+        #if len(packages) < 2:
+            #print('Need at least 2 packages to consolidate')
 
-        else:
-            shipment = self.shipment_order.shipment
-            print(f'FROM SHIPMENT CONSOLIDATE(): PACKAGE LIST = {packages}')
-            cons = ConsolidatedPackage(
-                dimensions=dimensions,
-                dim_units='INCH',
-                customer_order=self._shipment_order,
-                description=description,
-                package_list=packages
-            )
-            self.assign_package_IDs()
+        print(f'FROM SHIPMENT CONSOLIDATE(): PACKAGE LIST = {packages}')
+        cons = ConsolidatedPackage(
+            dimensions=dimensions,
+            dim_units='INCH',
+            customer_order=self.shipment_order,
+            description=description,
+            package_list=packages
+        )
+        self.assign_package_IDs()
 
     def deconsolidate(self, package):
         if not isinstance(package, ConsolidatedPackage):
