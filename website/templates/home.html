@@ -68,10 +68,21 @@
   <ul class="list-group list-group-flush" id="packages">
     {% for pk in shipment.packages %}
     <li class="list-group-item">
-      <div class="order-info">
+      <div class="order-info toggle-section"
+          onClick="toggleView('packageview-{{ pk.package_id }}')">
         <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}">
           {{"Box " ~ pk.package_id}}
         </a>
+        {% if pk.has_batteries %}
+        <span>
+          <i class="fa-solid fa-battery-full"></i>
+        </span>
+        {% endif %}
+        {% if pk.fragile %}
+        <span>
+          <i class="fa-solid fa-house-crack"></i>
+        </span>
+        {% endif %}
         <span class="description">{{"— " ~ pk.shipper.name}}</span>
         {% if pk.validate() != True %}
         <i class="fa-solid fa-circle-exclamation"
@@ -79,34 +90,45 @@
         ></i>
         <span class="description"></span>
         {% endif %}
+        <span class="actions">
+          <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}', 'permanent')">Delete</a>
+        </span>
       </div>
-      <div class="actions">
-        <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}" class="btn btn-link">Edit</a>
-        <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('packageview-{{ pk.package_id }}')">View</a>
-        <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}', 'permanent')">Delete</a>
-      </div>
+      
       <div id="packageview-{{ pk.package_id }}" class="view-form" style="display: none;">
         <p>Description: {{ pk.description }}</p>
-        <p>Has Batteries: {{ pk.has_batteries }}</p>
-        <p>Is Fragile: {{ pk.fragile }}</p>
-        <p>Dimensions: {{ pk.dimensions }} {{pk.dim_units}}</p>
+        <p>Dimensions: {{ pk.view_dimensions() }} {{pk.dim_units}}</p>
         <p>Weight: {{ pk.weight }} kg</p>
         
-        <!-- these are not showing -->
-        {% if pk.__class__ == 'ConsolidatedPackage' %}
+        <!-- these are not showing properly -->
+        {% if pk.packages is defined %}
           {% for box in pk.packages %}
           {% set pk_id = box.package_id %}
-          <div class="order-info">
-            <a href="{{ url_for('views.pk_details', pk_id=pk_id) }}">
-              {{"Box " ~ pk_id}}
-            </a>
+          <div class="order-info toggle-section"
+            onClick="toggleView('packageview-{{ pk_id }}')">
+            <a href="{{ url_for('views.pk_details', pk_id=pk_id) }}">{{"Box " ~ pk_id}}</a>
+            {% if pk.has_batteries %}
+            <span>
+              <i class="fa-solid fa-battery-full"></i>
+            </span>
+            {% endif %}
+            {% if pk.fragile %}
+            <span>
+              <i class="fa-solid fa-house-crack"></i>
+            </span>
+            {% endif %}
             <span class="description">{{"— " ~ box.shipper.name}}</span>
+            <span class="actions">
+              <a href="javascript:void(0);" onClick="delete_package('{{ pk_id }}')">Delete</a>
+            </span>
           </div>
-          <div class="actions">
-            <a href="{{ url_for('views.pk_details', pk_id=pk_id) }}" class="btn btn-link">Edit</a>
-            <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('packageview-{{ pk_id }}')">View</a>
-            <a href="javascript:void(0);" onClick="delete_package('{{ pk_id }}')">Delete</a>
+          <div id="packageview-{{ pk_id }}" class="view-form" style="display: none;">
+            <strong> This box is consolidated. </strong>
+            <p>Description: {{ box.description }}</p>
+            <p>Dimensions: {{ box.view_dimensions() }} {{box.dim_units}}</p>
+            <p>Weight: {{ box.weight }} kg</p>
           </div>
+          
           {% endfor %}
         {% endif %}
 
@@ -127,24 +149,36 @@
         <a href="{{ url_for('views.view_order', order_id=order.id) }}">
           {{ order.customer.name }}
         </a>
-        <span class="description">{{" — " ~ order.packages|length ~ " packages" }}    (order id: {{ order.id }})</span>
+        <span class="description">{{" — " ~ order.packages|length ~ " packages" }}</span>
+        <span class="actions">
+          <a href="{{ url_for('views.add_package', order_id=order.id) }}" class="btn btn-link">Add Package</a>
+        </span>
       </div>
-      <div class="actions">
-        <a href="{{ url_for('views.add_package', order_id=order.id) }}" class="btn btn-link">Add Package</a>
-      </div>
+
       <br>
       <ul class="list-group list-group-flush" id="packages">
         {% for pk in order.packages %}
-        <div class="order-info">
+        <div class="order-info toggle-section"
+          onClick="toggleView('orderview-{{ pk.package_id }}')">
+
           <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}">
             {{"Box " ~ pk.package_id}}
           </a>
+          {% if pk.has_batteries %}
+          <span>
+            <i class="fa-solid fa-battery-full"></i>
+          </span>
+          {% endif %}
+          {% if pk.fragile %}
+          <span>
+            <i class="fa-solid fa-house-crack"></i>
+          </span>
+          {% endif %}
           <span class="description">{{"— " ~ pk.description}}</span>
-        </div>
-        <div class="actions">
-          <a href="{{ url_for('views.pk_details', pk_id=pk.package_id) }}" class="btn btn-link">Edit</a>
-          <a href="javascript:void(0);" class="btn btn-link" onClick="toggleView('orderview-{{ pk.package_id }}')">View</a>
-          <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}', 'permanent')">Delete</a>
+          <span class="actions">
+            <a href="javascript:void(0);" onClick="delete_package('{{pk.package_id}}', 'permanent')">Delete</a>
+          </span>
+          
         </div>
         <div id="orderview-{{ pk.package_id }}" class="view-form" style="display: none;">
           {% if pk.consolidated %}
@@ -152,8 +186,6 @@
           {% endif %}
           <p>Dimensions: {{ pk.dimensions }} {{pk.dim_units}}</p>
           <p>Weight (kg): {{ pk.weight }}</p>
-          <p>Has Batteries: {{ pk.has_batteries }}</p>
-          <p>Is Fragile: {{ pk.fragile }}</p>
         </div>
         {% endfor %}
       </ul>
@@ -164,6 +196,27 @@
 
 <script>
 
+// for toggling view of package
+document.addEventListener('DOMContentLoaded', function() {
+    // Find all elements with the class 'clickable-div'
+    var viewable_sections = document.querySelectorAll('.toggle-section');
+    
+    // Attach a click event listener to each clickable div
+    viewable_sections.forEach(function(div) {
+        div.addEventListener('click', function(event) {
+            // prevents links within div from working
+            //event.preventDefault();
+            
+            // Get the value for the toggleView function from the data attribute
+            var toggleValue = div.getAttribute('id');
+            
+            // Call the toggleView function with the provided value
+            toggleView(toggleValue);
+        });
+    });
+});
+
+// for toggling between package and order view
 function showView(viewId) {
     // Hide all views first
     const views = document.getElementsByClassName('view');

@@ -85,14 +85,15 @@ def delete_package():
                 for pkkk in cons_pk.packages:
                     if str(pkkk.package_id) == str(pk_id):
                         pk = pkkk
-                        cons_pk.remove_packages(False, False, pk)
+                        cons_pk.remove_packages(packages=[pk])
                         break
 
     else:
-        print(f'REMOVE PERMANENTLY FROM SHIPMENT: {pk_id}')
         pk = shipment.package(pk_id)    # retrieves package based on id
+        print(f'REMOVE PERMANENTLY FROM SHIPMENT: {pk}')
         pk.customer_order.remove_package(pk)
     saver.save_data(session)
+    #pk.__class__ == 'ConsolidatedPackage'
 
     return jsonify({})  # jsonify empty python dictionary
 
