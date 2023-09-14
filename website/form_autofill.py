@@ -3,7 +3,14 @@ from .forms_api import google_forms_autofill as forms
 For autofilling. Assumes IDs of html elements remain the same.
 """
 
-enable_api = False
+enable_api = True
+creds = None
+
+def google_login():
+   creds = forms.authenticate_user(creds=forms.creds)
+   forms.initialize_sheets(creds=creds)
+   forms.creds = creds
+   return creds
 
 
 def fill_default_box_values(data):

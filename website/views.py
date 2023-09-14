@@ -188,6 +188,7 @@ def view_order():
 def add_order():
     global shipment
     global debugging
+    form_autofill.google_login()
     if request.method == 'POST':
         form_data = request.form
         action = form_data.get('action')

@@ -68,77 +68,78 @@ creds = None
 #service_gmail = build('gmail', 'v1', credentials=creds)
 
 # region exclude
-creds = authenticate_user(creds=creds)
+#creds = authenticate_user(creds=creds)
 
-service_forms = build("forms", "v1", credentials=creds)
-service_sheets = build('sheets', 'v4', credentials=creds)
-
-
-form_id = "192tZNUi0LPVw22RWWYk8esjjNQ4KQN8x2q1rQHXPhq0" # consolidation form
-#form_id = "1k9lG6y4ragRQkjXjo_92vpuhWmLW-VIvGCOWG0sKSWM" # testing form
-sheet_id = "11IRKB-KjUQf3kTn4e6jbx89gYaDJbQ1chenkXrU2XS0"
-sheet_name = "Consolidation Responses"
-
-try:
-	#results = service_gmail.users().labels().list(userId='me').execute()
-	#labels = results.get('labels', [])
-	form = service_forms.forms().get(formId=form_id).execute()
-	result = service_sheets.spreadsheets().values().get(spreadsheetId=sheet_id, range=sheet_name).execute()
-
-except HttpError as error:
-	print(f'An error occured: {error}')
+def initialize_sheets(creds=creds):
+	service_forms = build("forms", "v1", credentials=creds)
+	service_sheets = build('sheets', 'v4', credentials=creds)
 
 
-# list of lists where inner list represents a row
-values = result.get('values', [])
-headers = {}
+	form_id = "192tZNUi0LPVw22RWWYk8esjjNQ4KQN8x2q1rQHXPhq0" # consolidation form
+	#form_id = "1k9lG6y4ragRQkjXjo_92vpuhWmLW-VIvGCOWG0sKSWM" # testing form
+	sheet_id = "11IRKB-KjUQf3kTn4e6jbx89gYaDJbQ1chenkXrU2XS0"
+	sheet_name = "Consolidation Responses"
 
-person = "Shipper"
-for i, hd in enumerate(values[0]):
-	# keys in headers differ slightly from spreadsheet titles
-	# for readability
-	# if question titles change THEN CHANGE THEM HERE
+	try:
+		#results = service_gmail.users().labels().list(userId='me').execute()
+		#labels = results.get('labels', [])
+		form = service_forms.forms().get(formId=form_id).execute()
+		result = service_sheets.spreadsheets().values().get(spreadsheetId=sheet_id, range=sheet_name).execute()
 
-	# ensures a clear difference between shipper and consignee
-	# details despite questions having same titles
-	heading = hd.rstrip()
-	if heading == "Consignee's Name":
-		person = "Consignee"
-	elif heading == "Number of Boxes":
-		person = "None"
-	
-	if person != "None":
-		if (heading == "Address" or
-		heading == "City" or
-		heading == "State/Province" or
-		heading == "Zip Code" or
-		heading == "Cell Phone Number" or
-		heading == "Email"):
-			if person == "Shipper":
-				h = "Shipper's " + heading
-			elif person == "Consignee":
-				h = "Consignee's " + heading
-			headers[h] = i
-			continue
-	else:
-		h = heading
-		if heading == "Actual or Gross Weight":
-			h = "weight"
-		elif heading == "Does your shipment include lithium batteries?":
-			h = "has batteries"
-		elif heading == "Would you like insurance for your air freight delivery?":
-			h = "insurance"
-		if h != heading:
-			#print(f'---HEADING: {heading}')
-			#print(f'-------HEADER CHANGED TO	{h}\n')
-			headers[h] = i
-			continue
-	headers[heading] = i
-
-#endregion
+	except HttpError as error:
+		print(f'An error occured: {error}')
 
 
-print(f'------INITIALIZED GOOGLE FORMS SETUP')
+	# list of lists where inner list represents a row
+	values = result.get('values', [])
+	headers = {}
+
+	person = "Shipper"
+	for i, hd in enumerate(values[0]):
+		# keys in headers differ slightly from spreadsheet titles
+		# for readability
+		# if question titles change THEN CHANGE THEM HERE
+
+		# ensures a clear difference between shipper and consignee
+		# details despite questions having same titles
+		heading = hd.rstrip()
+		if heading == "Consignee's Name":
+			person = "Consignee"
+		elif heading == "Number of Boxes":
+			person = "None"
+		
+		if person != "None":
+			if (heading == "Address" or
+			heading == "City" or
+			heading == "State/Province" or
+			heading == "Zip Code" or
+			heading == "Cell Phone Number" or
+			heading == "Email"):
+				if person == "Shipper":
+					h = "Shipper's " + heading
+				elif person == "Consignee":
+					h = "Consignee's " + heading
+				headers[h] = i
+				continue
+		else:
+			h = heading
+			if heading == "Actual or Gross Weight":
+				h = "weight"
+			elif heading == "Does your shipment include lithium batteries?":
+				h = "has batteries"
+			elif heading == "Would you like insurance for your air freight delivery?":
+				h = "insurance"
+			if h != heading:
+				#print(f'---HEADING: {heading}')
+				#print(f'-------HEADER CHANGED TO	{h}\n')
+				headers[h] = i
+				continue
+		headers[heading] = i
+
+	#endregion
+
+
+	print(f'------INITIALIZED GOOGLE FORMS SETUP')
 # keys defined below must match keys defined in form_autofill.py
 # see get_autofill_dict()
 
