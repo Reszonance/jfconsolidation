@@ -1,1 +1,5 @@
-\venv
+/venv
+/website/forms_api/client_secrets_app.json
+/website/forms_api/client_secrets_web.json
+/website/forms_api/.env
+/website/forms_api/token.json

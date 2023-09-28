@@ -16,3 +16,5 @@ requests
 requests-oauthlib
 uritemplate
 urllib3
+python-dotenv
+os

@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 from flask import redirect, url_for, request
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -8,6 +9,8 @@ from googleapiclient.errors import HttpError
 from oauthlib.oauth2.rfc6749.errors import AccessDeniedError
 
 import pprint
+
+load_dotenv()
 
 current_dir = os.path.dirname(__file__)
 
@@ -75,14 +78,17 @@ def initialize_sheets(creds=creds):
 	service_sheets = build('sheets', 'v4', credentials=creds)
 
 
-	form_id = "192tZNUi0LPVw22RWWYk8esjjNQ4KQN8x2q1rQHXPhq0" # consolidation form
+	form_id = os.getenv('FORM_ID')
 	#form_id = "1k9lG6y4ragRQkjXjo_92vpuhWmLW-VIvGCOWG0sKSWM" # testing form
-	sheet_id = "11IRKB-KjUQf3kTn4e6jbx89gYaDJbQ1chenkXrU2XS0"
+	sheet_id = os.getenv('SHEET_ID')
 	sheet_name = "Consolidation Responses"
+
+	result = None
 
 	try:
 		#results = service_gmail.users().labels().list(userId='me').execute()
 		#labels = results.get('labels', [])
+		
 		form = service_forms.forms().get(formId=form_id).execute()
 		result = service_sheets.spreadsheets().values().get(spreadsheetId=sheet_id, range=sheet_name).execute()
 
